@@ -274,13 +274,11 @@ fn castle(castle_kind: CastleKind, board: &Board) -> Option<Move> {
         CastleKind::Kingside => match board.active_color {
             Color::White => {
                 if !white_can_castle_kingside {
-                    println!("Invalid move");
                     return None;
                 }
             }
             Color::Black => {
                 if !black_can_caslte_kingside {
-                    println!("Invalid move");
                     return None;
                 }
             }
@@ -289,29 +287,25 @@ fn castle(castle_kind: CastleKind, board: &Board) -> Option<Move> {
         CastleKind::Queenside => match board.active_color {
             Color::White => {
                 if !white_can_castle_queenside {
-                    println!("Invalid move");
                     return None;
                 }
             }
             Color::Black => {
                 if !black_can_caslte_queenside {
-                    println!("Invalid move");
                     return None;
                 }
             }
         },
     }
 
-    let r#move = Move {
+    Some(Move {
         src_square: None,
         dst_square: None,
         promotion: None,
         en_passant: None,
         en_passant_capture: false,
         castle: Some(castle_kind),
-    };
-
-    Some(r#move)
+    })
 }
 
 fn pawn_move(dst_square: (usize, usize), board: &Board) -> Option<Move> {

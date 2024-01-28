@@ -53,10 +53,11 @@ impl Board {
         let r#move = Move::from_algebraic(r#move, self);
 
         if let Some(ref r#move) = r#move {
-            // handle en passant
+            // handle en passant capture
             if r#move.en_passant_capture {
                 let en_passant_square = self.en_passant?;
 
+                // calculate the square of the pawn that was captured
                 let en_passant_capture_square = match self.active_color {
                     Color::White => (en_passant_square.0 + 1, en_passant_square.1),
                     Color::Black => (en_passant_square.0 - 1, en_passant_square.1),
@@ -65,34 +66,30 @@ impl Board {
                 self.set_piece(en_passant_capture_square, None);
             }
 
-            self.active_color = self.active_color.invert();
             let src_square = r#move.src_square?;
             let dst_square = r#move.dst_square?;
+            let src_square_piece = self.get_piece(src_square);
+            let dst_square_piece = self.get_piece(dst_square);
 
-            // reset halfmove clock (if pawn moved or piece captured)
-            if self.get_piece(dst_square).is_some()
-                || self.get_piece(src_square) == Some(Piece::Pawn(self.active_color))
+            // normal move
+            self.set_piece(dst_square, src_square_piece);
+            self.set_piece(src_square, None);
+
+            // update board state
+            self.active_color = self.active_color.invert();
+            self.en_passant = r#move.en_passant;
+            self.halfmove_clock += 1;
+
+            self.fullmove_number += match self.active_color {
+                Color::White => self.fullmove_number,
+                Color::Black => self.fullmove_number + 1,
+            };
+
+            if src_square_piece == Some(Piece::Pawn(self.active_color))
+                || dst_square_piece.is_some()
+                || r#move.en_passant_capture
             {
                 self.halfmove_clock = 0;
-            } else {
-                self.halfmove_clock += 1;
-            }
-
-            // handle promotion
-            match r#move.promotion {
-                Some(promotion) => {
-                    self.set_piece(dst_square, Some(promotion));
-                }
-                None => {
-                    self.set_piece(dst_square, self.get_piece(src_square));
-                }
-            }
-
-            self.set_piece(src_square, None);
-            self.en_passant = r#move.en_passant;
-
-            if self.active_color == Color::White {
-                self.fullmove_number += 1;
             }
         }
 
@@ -109,18 +106,16 @@ impl Default for Board {
 /// Tries to convert an algebraic notation string into a tuple of coordinates
 pub fn algebraic_to_coordinates(algebraic: &str) -> Option<(usize, usize)> {
     let mut chars = algebraic.chars();
-    let row_char = chars.next()?;
     let column_char = chars.next()?;
+    let row_char = chars.next()?;
 
-    if !('a'..='h').contains(&row_char) || !('1'..='8').contains(&column_char) {
+    if !('a'..='h').contains(&column_char) || !('1'..='8').contains(&row_char) {
         return None;
     }
 
     // 7 - () because the board is zero-indexed and the rows are reversed
-    let row = 7 - (column_char as usize - 49);
-
-    // -1 because the board is zero-indexed
-    let column = row_char as usize - 97;
+    let row = 7 - (row_char as usize - 49);
+    let column = column_char as usize - 97;
 
     Some((row, column))
 }
@@ -133,16 +128,10 @@ pub fn coordinates_to_algebraic(coordinates: (usize, usize)) -> Option<String> {
         return None;
     }
 
-    // 7 - () because the board is zero-indexed and the rows are reversed
-    let row_char = (7 - row) as u8 + 49;
+    let row_char = 8 - row;
+    let column_char = column as u8 + 97;
 
-    // + 1 because the board is zero-indexed
-    let column_char = column as u8 + 1;
-
-    let mut algebraic = String::new();
-    algebraic.push(row_char as char);
-    algebraic.push(column_char as char);
-
+    let algebraic = format!("{}{}", column_char as char, row_char);
     Some(algebraic)
 }
 
