@@ -49,6 +49,10 @@ impl Board {
         }
     }
 
+    /// Makes a move on the board given its algebraic notation.
+    /// If the move notation is invalid or the move is not legal, no move is
+    /// made.
+    /// Returns the move that was made.
     pub fn make_move_algebraic(&mut self, r#move: &str) -> Option<Move> {
         let r#move = Move::from_algebraic(r#move, self);
 
@@ -66,31 +70,39 @@ impl Board {
                 self.set_piece(en_passant_capture_square, None);
             }
 
+            // handle castling
+            // todo
+
+            // update the board state
             let src_square = r#move.src_square?;
             let dst_square = r#move.dst_square?;
             let src_square_piece = self.get_piece(src_square);
             let dst_square_piece = self.get_piece(dst_square);
 
-            // normal move
-            self.set_piece(dst_square, src_square_piece);
-            self.set_piece(src_square, None);
-
-            // update board state
             self.active_color = self.active_color.invert();
             self.en_passant = r#move.en_passant;
             self.halfmove_clock += 1;
 
             self.fullmove_number += match self.active_color {
-                Color::White => self.fullmove_number,
-                Color::Black => self.fullmove_number + 1,
+                Color::White => 1,
+                Color::Black => 0,
             };
 
-            if src_square_piece == Some(Piece::Pawn(self.active_color))
+            if src_square_piece == Some(Piece::Pawn(self.active_color.invert()))
                 || dst_square_piece.is_some()
                 || r#move.en_passant_capture
             {
                 self.halfmove_clock = 0;
             }
+
+            // handle promotion
+            if let Some(promotion_piece) = r#move.promotion {
+                self.set_piece(dst_square, Some(promotion_piece));
+            } else {
+                self.set_piece(dst_square, src_square_piece);
+            }
+
+            self.set_piece(src_square, None);
         }
 
         r#move
