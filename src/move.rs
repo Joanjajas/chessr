@@ -1,9 +1,28 @@
-use crate::board::{algebraic_to_coordinates, Board};
+use crate::board::{self, Board};
 use crate::castle::{CastleKind, CastleRights};
 use crate::color::Color;
 use crate::piece::Piece;
 
 use regex::Regex;
+
+const CASTLE_REGEX: &str = r"^(O-O|O-O-O|0-0|0-0-0|o-o|o-o-o)(\+|\#)?$";
+const PAWN_MOVE_REGEX: &str = r"^([a-h])([2-7])(\+|\#)?$";
+const PIECE_MOVE_REGEX: &str = r"^([KQBNR|kqbnr])([a-h])([1-8])(\+|\#)?$";
+const PAWN_CAPTURE_REGEX: &str = r"^([a-h])x([a-h])([2-7])(\+|\#)?$";
+const PIECE_CAPTURE_REGEX: &str = r"^([KQBNR|kqbnr])x([a-h])([1-8])(\+|\#)?$";
+const PAWN_PROMOTION_REGEX: &str = r"^([a-h])(1|8)=([QBNR|qbnr])(\+|\#)?$";
+const PAWN_CAPTURE_PROMOTION_REGEX: &str = r"^([a-h])x([a-h])(1|8)=([QBNR|qbnr])(\+|\#)?$";
+const PIECE_MOVE_ROW_DISAMBIGUATION_REGEX: &str = r"^([KQBNR|kqbnr])([1-8])([a-h])([1-8])(\+|\#)?$";
+const PIECE_MOVE_COLUMN_DISAMBIGUATION_REGEX: &str =
+    r"^([KQBNR|kqbnr])([a-h])([a-h])([1-8])(\+|\#)?$";
+const PIECE_MOVE_ROW_AND_COLUMN_DISAMBIGUATION_REGEX: &str =
+    r"^([KQBNR|kqbnr])([a-h])([1-8])([a-h])([1-8])(\+|\#)?$";
+const PIECE_CAPTURE_ROW_DISAMBIGUATION_REGEX: &str =
+    r"^([KQBNR|kqbnr])([1-8])x([a-h])([1-8])(\+|\#)?$";
+const PIECE_CAPTURE_COLUMN_DISAMBIGUATION_REGEX: &str =
+    r"^([KQBNR|kqbnr])([a-h])x([a-h])([1-8])(\+|\#)?$";
+const PIECE_CAPTURE_ROW_AND_COLUMN_DISAMBIGUATION_REGEX: &str =
+    r"^([KQBNR|kqbnr])([a-h])([1-8])x([a-h])([1-8])(\+|\#)?$";
 
 const PAWN_DIRECTIONS: [(i8, i8); 4] = [(1, 0), (1, 1), (1, -1), (2, 0)];
 const ROOK_DIRECTIONS: [(i8, i8); 4] = [(1, 0), (0, 1), (-1, 0), (0, -1)];
@@ -50,172 +69,181 @@ pub struct Move {
     pub castle: Option<CastleKind>,
 }
 
-#[allow(unused_variables)]
-#[allow(dead_code)]
 impl Move {
-    /// Return a valid move struct representation of the given algebraic notation
-    pub fn from_algebraic(r#move: &str, state: &Board) -> Option<Move> {
+    /// Return move struct representation of the given algebraic notation for the given board
+    /// If the move is invalid it will return None
+    pub fn from_algebraic(r#move: &str, board: &Board) -> Option<Move> {
         // castling
-        let re = Regex::new(r"^(O-O|O-O-O|0-0|0-0-0|o-o|o-o-o)(\+|\#)?$").unwrap();
+        let re = Regex::new(CASTLE_REGEX).expect("Invalid castle regex");
+
         if re.is_match(r#move) {
-            let castle_type = CastleKind::from_algebraic(r#move);
-            return castle(castle_type?, state);
+            let castle_type = CastleKind::from_algebraic(r#move)?;
+            return castle(castle_type, board);
         };
 
         // pawn move
-        let re = Regex::new(r"^([a-h])([2-7])(\+|\#)?$").unwrap();
+        let re = Regex::new(PAWN_MOVE_REGEX).expect("Invalid pawn move regex");
+
         if re.is_match(r#move) {
-            let dst_square = algebraic_to_coordinates(r#move);
-            return pawn_move(dst_square?, state);
+            let dst_square = board::algebraic_to_coordinates(r#move)?;
+            return pawn_move(dst_square, board);
         }
 
         // piece move
-        let re = Regex::new(r"^([KQBNR|kqbnr])([a-h])([1-8])(\+|\#)?$").unwrap();
-        if re.is_match(r#move) {
-            let mut chars = r#move.chars();
-            let piece = Piece::from_algebraic_char(chars.next().unwrap(), state.active_color);
-            let dst_square = algebraic_to_coordinates(&r#move[1..]);
+        let re = Regex::new(PIECE_MOVE_REGEX).expect("Invalid piece move regex");
 
-            return piece_move(piece?, dst_square?, None, None, state);
+        if re.is_match(r#move) {
+            let piece = Piece::from_algebraic_char(r#move.chars().next()?, board.active_color)?;
+            let dst_square = board::algebraic_to_coordinates(&r#move[1..])?;
+
+            return piece_move(piece, dst_square, None, None, board);
         }
 
         // piece disambiguation (row)
-        let re = Regex::new(r"^([KQBNR|kqbnr])([1-8])([a-h])([1-8])(\+|\#)?$").unwrap();
+        let re = Regex::new(PIECE_MOVE_ROW_DISAMBIGUATION_REGEX)
+            .expect("Invalid piece move row disambiguation regex");
+
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
-            let piece = Piece::from_algebraic_char(chars.next().unwrap(), state.active_color);
-            let disambiguation_row = 7 - (chars.next().unwrap() as usize - 49);
-            let dst_square = algebraic_to_coordinates(&r#move[2..]);
+            let piece = Piece::from_algebraic_char(chars.next()?, board.active_color)?;
+            let dst_square = board::algebraic_to_coordinates(&r#move[2..])?;
+            let disambiguation_row = 7 - (chars.next()? as usize - 49);
 
-            return piece_move(piece?, dst_square?, Some(disambiguation_row), None, state);
+            return piece_move(piece, dst_square, Some(disambiguation_row), None, board);
         }
 
         // piece disambiguation (column)
-        let re = Regex::new(r"^([KQBNR|kqbnr])([a-h])([a-h])([1-8])(\+|\#)?$").unwrap();
+        let re = Regex::new(PIECE_MOVE_COLUMN_DISAMBIGUATION_REGEX)
+            .expect("Invalid piece move column disambiguation regex");
+
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
-            let piece = Piece::from_algebraic_char(chars.next().unwrap(), state.active_color);
-            let disambiguation_column = chars.next().unwrap() as usize - 97;
-            let dst_square = algebraic_to_coordinates(&r#move[2..]);
+            let piece = Piece::from_algebraic_char(chars.next().unwrap(), board.active_color)?;
+            let dst_square = board::algebraic_to_coordinates(&r#move[2..])?;
+            let disambiguation_column = chars.next()? as usize - 97;
 
-            return piece_move(
-                piece?,
-                dst_square?,
-                None,
-                Some(disambiguation_column),
-                state,
-            );
+            return piece_move(piece, dst_square, None, Some(disambiguation_column), board);
         }
 
         // piece disambiguation (row and column)
-        let re = Regex::new(r"^([KQBNR|kqbnr])([a-h])([1-8])([a-h])([1-8])(\+|\#)?$").unwrap();
+        let re = Regex::new(PIECE_MOVE_ROW_AND_COLUMN_DISAMBIGUATION_REGEX)
+            .expect("Invalid piece move row and column disambiguation regex");
+
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
-            let piece = Piece::from_algebraic_char(chars.next().unwrap(), state.active_color);
-            let disambiguation_column = chars.next().unwrap() as usize - 97;
-            let disambiguation_row = 7 - (chars.next().unwrap() as usize - 49);
-            let dst_square = algebraic_to_coordinates(&r#move[3..]);
+            let piece = Piece::from_algebraic_char(chars.next()?, board.active_color)?;
+            let dst_square = board::algebraic_to_coordinates(&r#move[3..])?;
+            let (disambiguation_row, disambiguation_column) =
+                board::algebraic_to_coordinates(&r#move[1..3])?;
 
             return piece_move(
-                piece?,
-                dst_square?,
+                piece,
+                dst_square,
                 Some(disambiguation_row),
                 Some(disambiguation_column),
-                state,
+                board,
             );
         }
 
         // pawn capture
-        let re = Regex::new(r"^([a-h])x([a-h])([2-7])(\+|\#)?$").unwrap();
+        let re = Regex::new(PAWN_CAPTURE_REGEX).expect("Invalid pawn capture regex");
+
         if re.is_match(r#move) {
-            let dst_square = algebraic_to_coordinates(&r#move[2..]);
-            let disambiguation_column = r#move.chars().nth(0).unwrap() as usize - 97;
-            return pawn_capture(dst_square?, disambiguation_column, state);
+            let dst_square = board::algebraic_to_coordinates(&r#move[2..])?;
+            let disambiguation_column = r#move.chars().nth(0)? as usize - 97;
+
+            return pawn_capture(dst_square, disambiguation_column, board);
         }
 
         // piece capture
-        let re = Regex::new(r"^([KQBNR|kqbnr])x([a-h])([1-8])(\+|\#)?$").unwrap();
+        let re = Regex::new(PIECE_CAPTURE_REGEX).expect("Invalid piece capture regex");
+
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
-            let piece = Piece::from_algebraic_char(chars.next().unwrap(), state.active_color);
-            let dst_square = algebraic_to_coordinates(&r#move[2..]);
+            let piece = Piece::from_algebraic_char(chars.next()?, board.active_color)?;
+            let dst_square = board::algebraic_to_coordinates(&r#move[2..])?;
 
-            return piece_move(piece?, dst_square?, None, None, state);
+            return piece_move(piece, dst_square, None, None, board);
         }
 
         // piece capture (row disambiguation)
-        let re = Regex::new(r"^([KQBNR|kqbnr])([1-8])x([a-h])([1-8])(\+|\#)?$").unwrap();
+        let re = Regex::new(PIECE_CAPTURE_ROW_DISAMBIGUATION_REGEX)
+            .expect("Invalid piece capture row disambiguation regex");
+
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
-            let piece = Piece::from_algebraic_char(chars.next().unwrap(), state.active_color);
-            let disambiguation_row = 7 - (chars.next().unwrap() as usize - 49);
-            let dst_square = algebraic_to_coordinates(&r#move[3..]);
+            let piece = Piece::from_algebraic_char(chars.next()?, board.active_color)?;
+            let dst_square = board::algebraic_to_coordinates(&r#move[3..])?;
+            let disambiguation_row = 7 - (chars.next()? as usize - 49);
 
-            return piece_move(piece?, dst_square?, Some(disambiguation_row), None, state);
+            return piece_move(piece, dst_square, Some(disambiguation_row), None, board);
         }
 
         // piece capture (column disambiguation)
-        let re = Regex::new(r"^([KQBNR|kqbnr])([a-h])x([a-h])([1-8])(\+|\#)?$").unwrap();
+        let re = Regex::new(PIECE_CAPTURE_COLUMN_DISAMBIGUATION_REGEX)
+            .expect("Invalid piece capture column disambiguation regex");
+
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
-            let piece = Piece::from_algebraic_char(chars.next().unwrap(), state.active_color);
-            let disambiguation_column = chars.next().unwrap() as usize - 97;
-            let dst_square = algebraic_to_coordinates(&r#move[3..]);
+            let piece = Piece::from_algebraic_char(chars.next()?, board.active_color)?;
+            let dst_square = board::algebraic_to_coordinates(&r#move[3..])?;
+            let disambiguation_column = chars.next()? as usize - 97;
 
-            return piece_move(
-                piece?,
-                dst_square?,
-                None,
-                Some(disambiguation_column),
-                state,
-            );
+            return piece_move(piece, dst_square, None, Some(disambiguation_column), board);
         }
 
         // piece capture (row and column disambiguation)
-        let re = Regex::new(r"^([KQBNR|kqbnr])([a-h])([1-8])x([a-h])([1-8])(\+|\#)?$").unwrap();
+        let re = Regex::new(PIECE_CAPTURE_ROW_AND_COLUMN_DISAMBIGUATION_REGEX)
+            .expect("Invalid piece capture row and column disambiguation regex");
+
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
-            let piece = Piece::from_algebraic_char(chars.next().unwrap(), state.active_color);
-            let disambiguation_column = chars.next().unwrap() as usize - 97;
-            let disambiguation_row = 7 - (chars.next().unwrap() as usize - 49);
-            let dst_square = algebraic_to_coordinates(&r#move[4..]);
+            let piece = Piece::from_algebraic_char(chars.next()?, board.active_color)?;
+            let dst_square = board::algebraic_to_coordinates(&r#move[4..])?;
+            let (disambiguation_row, disambiguation_column) =
+                board::algebraic_to_coordinates(&r#move[1..3])?;
 
             return piece_move(
-                piece?,
-                dst_square?,
+                piece,
+                dst_square,
                 Some(disambiguation_row),
                 Some(disambiguation_column),
-                state,
+                board,
             );
         }
 
         // pawn promotion
-        let re = Regex::new(r"^([a-h])(1|8)=([QBNR|qbnr])(\+|\#)?$").unwrap();
-        if re.is_match(r#move) {
-            let dst_square = algebraic_to_coordinates(&r#move[0..2]);
-            let promotion_piece =
-                Piece::from_algebraic_char(r#move.chars().nth(3).unwrap(), state.active_color);
-            let r#move = pawn_move(dst_square?, state);
+        let re = Regex::new(PAWN_PROMOTION_REGEX).expect("Invalid pawn promotion regex");
 
-            if let Some(mut r#move) = r#move {
-                r#move.promotion = Some(promotion_piece?);
-                return Some(r#move);
+        if re.is_match(r#move) {
+            let dst_square = board::algebraic_to_coordinates(&r#move[0..2])?;
+            let promotion_piece =
+                Piece::from_algebraic_char(r#move.chars().nth(3)?, board.active_color)?;
+
+            let mut r#move = pawn_move(dst_square, board);
+            if let Some(ref mut r#move) = r#move {
+                r#move.promotion = Some(promotion_piece);
             }
+
+            return r#move;
         }
 
         // pawn capture promotion
-        let re = Regex::new(r"^([a-h])x([a-h])(1|8)=([QBNR|qbnr])(\+|\#)?$").unwrap();
-        if re.is_match(r#move) {
-            let dst_square = algebraic_to_coordinates(&r#move[2..4]);
-            let disambiguation_column = r#move.chars().nth(0).unwrap() as usize - 97;
-            let promotion_piece =
-                Piece::from_algebraic_char(r#move.chars().nth(5).unwrap(), state.active_color);
-            let r#move = pawn_capture(dst_square?, disambiguation_column, state);
+        let re =
+            Regex::new(PAWN_CAPTURE_PROMOTION_REGEX).expect("Invalid pawn capture promotion regex");
 
-            if let Some(mut r#move) = r#move {
-                r#move.promotion = Some(promotion_piece?);
-                return Some(r#move);
+        if re.is_match(r#move) {
+            let dst_square = board::algebraic_to_coordinates(&r#move[2..4]);
+            let disambiguation = r#move.chars().nth(0)? as usize - 97;
+            let promotion_piece =
+                Piece::from_algebraic_char(r#move.chars().nth(5)?, board.active_color)?;
+
+            let mut r#move = pawn_capture(dst_square?, disambiguation, board);
+            if let Some(ref mut r#move) = r#move {
+                r#move.promotion = Some(promotion_piece);
             }
+
+            return r#move;
         }
 
         println!("Invalid move notation: {}", r#move);
@@ -337,7 +365,6 @@ fn pawn_move(dst_square: (usize, usize), board: &Board) -> Option<Move> {
         });
     }
 
-    println!("Invalid move");
     None
 }
 
@@ -365,9 +392,14 @@ fn pawn_capture(
         // check if the move is a capture
         let is_capture = direction.1 != 0;
 
-        // check if the dst_square square is occupied by an enemy piece or en passant is possible
+        // check for an invalid capture
+        // either the destination square is osccupied by a piece of the same
+        // color or if it is empty, en passant is not possible or the en passant
+        // square is not the same as the destination square
         let invalid_capture = dst_square_piece.is_some_and(|p| p.color() == &board.active_color)
-            || (dst_square_piece.is_none() && board.en_passant.is_some_and(|s| s != dst_square));
+            || dst_square_piece.is_none()
+                && (board.en_passant.is_none()
+                    || board.en_passant.is_some_and(|s| s != dst_square));
 
         // check for row disambiguation
         let invalid_disambiguation = src_square.1 != disambiguation_column;
@@ -392,7 +424,6 @@ fn pawn_capture(
         });
     }
 
-    println!("Invalid move");
     None
 }
 
@@ -438,6 +469,7 @@ fn piece_move(
                 break;
             }
 
+            // check for row disambiguation
             if let Some(row) = disambiguation_row {
                 if row != src_square.0 as usize {
                     src_square.0 += direction.0;
@@ -446,6 +478,7 @@ fn piece_move(
                 }
             }
 
+            // check for column disambiguation
             if let Some(column) = disambiguation_column {
                 if column != src_square.1 as usize {
                     src_square.0 += direction.0;
@@ -454,6 +487,11 @@ fn piece_move(
                 }
             }
 
+            // if the piece we are moving is not in the square we are looking
+            // in, then go to the next square in the same direction if the
+            // moving piece is not a queen, rook or bishop, or search in the
+            // next direction if it is a queen, rook or bishop (queen, rook and
+            // bishop can move multiple squares)
             if src_square_piece.is_none() {
                 src_square.0 += direction.0;
                 src_square.1 += direction.1;
@@ -485,12 +523,9 @@ fn piece_move(
     }
 
     match valid_moves.len() {
-        0 => {
-            println!("Invalid move");
-            None
-        }
+        0 => None,
         1 => {
-            let r#move = valid_moves.first().unwrap();
+            let r#move = valid_moves.first()?;
             Some(r#move.clone())
         }
         _ => {

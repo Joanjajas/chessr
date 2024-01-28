@@ -56,7 +56,11 @@ pub fn fen_to_board(fen_string: &str) -> Result<Board, FenParseError> {
 
     let mut castle_rights = Vec::new();
     for c in fen_blocks.get(2).ok_or(FenParseError::FenString)?.chars() {
-        castle_rights.push(CastleRights::from_fen_char(c).ok_or(FenParseError::CastleRights)?);
+        match c {
+            '-' => continue,
+            _ => castle_rights
+                .push(CastleRights::from_fen_char(c).ok_or(FenParseError::CastleRights)?),
+        }
     }
 
     let en_passant = match *fen_blocks.get(3).ok_or(FenParseError::FenString)? {

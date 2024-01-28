@@ -3,6 +3,7 @@ use crate::color::Color;
 use crate::error::FenParseError;
 use crate::fen;
 use crate::piece::Piece;
+use crate::r#move::Move;
 
 const FEN_STARTING_POSITION: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -47,6 +48,56 @@ impl Board {
             self.pieces[square.0][square.1] = piece;
         }
     }
+
+    pub fn make_move_algebraic(&mut self, r#move: &str) -> Option<Move> {
+        let r#move = Move::from_algebraic(r#move, self);
+
+        if let Some(ref r#move) = r#move {
+            // handle en passant
+            if r#move.en_passant_capture {
+                let en_passant_square = self.en_passant?;
+
+                let en_passant_capture_square = match self.active_color {
+                    Color::White => (en_passant_square.0 + 1, en_passant_square.1),
+                    Color::Black => (en_passant_square.0 - 1, en_passant_square.1),
+                };
+
+                self.set_piece(en_passant_capture_square, None);
+            }
+
+            self.active_color = self.active_color.invert();
+            let src_square = r#move.src_square?;
+            let dst_square = r#move.dst_square?;
+
+            // reset halfmove clock (if pawn moved or piece captured)
+            if self.get_piece(dst_square).is_some()
+                || self.get_piece(src_square) == Some(Piece::Pawn(self.active_color))
+            {
+                self.halfmove_clock = 0;
+            } else {
+                self.halfmove_clock += 1;
+            }
+
+            // handle promotion
+            match r#move.promotion {
+                Some(promotion) => {
+                    self.set_piece(dst_square, Some(promotion));
+                }
+                None => {
+                    self.set_piece(dst_square, self.get_piece(src_square));
+                }
+            }
+
+            self.set_piece(src_square, None);
+            self.en_passant = r#move.en_passant;
+
+            if self.active_color == Color::White {
+                self.fullmove_number += 1;
+            }
+        }
+
+        r#move
+    }
 }
 
 impl Default for Board {
@@ -65,11 +116,11 @@ pub fn algebraic_to_coordinates(algebraic: &str) -> Option<(usize, usize)> {
         return None;
     }
 
-    // -1 because the board is zero-indexed
-    let column = row_char.to_digit(10)? as usize - 1;
-
     // 7 - () because the board is zero-indexed and the rows are reversed
     let row = 7 - (column_char as usize - 49);
+
+    // -1 because the board is zero-indexed
+    let column = row_char as usize - 97;
 
     Some((row, column))
 }
