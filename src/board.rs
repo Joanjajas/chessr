@@ -1,4 +1,4 @@
-use crate::castle::CastleRights;
+use crate::castle::{CastleKind, CastleRights};
 use crate::color::Color;
 use crate::error::FenParseError;
 use crate::fen;
@@ -71,23 +71,31 @@ impl Board {
             }
 
             // handle castling
-            // todo
+            if let Some(ref castle) = r#move.castle {
+                match castle {
+                    CastleKind::Kingside => self.castle_kingside(self.active_color),
+                    CastleKind::Queenside => self.castle_queenside(self.active_color),
+                }
+            }
 
             // update the board state
-            let src_square = r#move.src_square?;
-            let dst_square = r#move.dst_square?;
-            let src_square_piece = self.get_piece(src_square);
-            let dst_square_piece = self.get_piece(dst_square);
-
+            self.update_castle_rights(r#move);
             self.active_color = self.active_color.invert();
             self.en_passant = r#move.en_passant;
             self.halfmove_clock += 1;
 
+            // fullmove number (increases every turn)
             self.fullmove_number += match self.active_color {
                 Color::White => 1,
                 Color::Black => 0,
             };
 
+            let src_square = r#move.src_square?;
+            let dst_square = r#move.dst_square?;
+            let src_square_piece = self.get_piece(src_square);
+            let dst_square_piece = self.get_piece(dst_square);
+
+            // reset  halfmove clock if a pawn is moved or a piece is captured
             if src_square_piece == Some(Piece::Pawn(self.active_color.invert()))
                 || dst_square_piece.is_some()
                 || r#move.en_passant_capture
@@ -106,6 +114,97 @@ impl Board {
         }
 
         r#move
+    }
+
+    fn castle_kingside(&mut self, color: Color) {
+        let row = match color {
+            Color::White => 7,
+            Color::Black => 0,
+        };
+
+        let king_square = (row, 4);
+        let rook_square = (row, 7);
+
+        self.set_piece(king_square, None);
+        self.set_piece(rook_square, None);
+
+        let king = Piece::King(color);
+        let rook = Piece::Rook(color);
+
+        self.set_piece((row, 6), Some(king));
+        self.set_piece((row, 5), Some(rook));
+    }
+
+    fn castle_queenside(&mut self, color: Color) {
+        let row = match color {
+            Color::White => 7,
+            Color::Black => 0,
+        };
+
+        let king_square = (row, 4);
+        let rook_square = (row, 0);
+
+        self.set_piece(king_square, None);
+        self.set_piece(rook_square, None);
+
+        let king = Piece::King(color);
+        let rook = Piece::Rook(color);
+
+        self.set_piece((row, 2), Some(king));
+        self.set_piece((row, 3), Some(rook));
+    }
+
+    fn update_castle_rights(&mut self, r#move: &Move) {
+        if r#move.castle.is_some() {
+            match self.active_color {
+                Color::White => self.castle_rights.retain(|x| {
+                    x != &CastleRights::WhiteKingside && x != &CastleRights::WhiteQueenside
+                }),
+                Color::Black => self.castle_rights.retain(|x| {
+                    x != &CastleRights::BlackKingside && x != &CastleRights::BlackQueenside
+                }),
+            }
+        }
+
+        if let Some(src_square) = r#move.src_square {
+            let src_square_piece = self.get_piece(src_square);
+
+            match src_square_piece {
+                Some(Piece::King(Color::White)) => {
+                    self.castle_rights.retain(|x| {
+                        x != &CastleRights::WhiteKingside && x != &CastleRights::WhiteQueenside
+                    });
+                }
+
+                Some(Piece::King(Color::Black)) => {
+                    self.castle_rights.retain(|x| {
+                        x != &CastleRights::BlackKingside && x != &CastleRights::BlackQueenside
+                    });
+                }
+
+                Some(Piece::Rook(Color::White)) => {
+                    if src_square == (7, 7) {
+                        self.castle_rights
+                            .retain(|x| x != &CastleRights::WhiteKingside);
+                    } else if src_square == (7, 0) {
+                        self.castle_rights
+                            .retain(|x| x != &CastleRights::WhiteQueenside);
+                    }
+                }
+
+                Some(Piece::Rook(Color::Black)) => {
+                    if src_square == (0, 7) {
+                        self.castle_rights
+                            .retain(|x| x != &CastleRights::BlackKingside);
+                    } else if src_square == (0, 0) {
+                        self.castle_rights
+                            .retain(|x| x != &CastleRights::BlackQueenside);
+                    }
+                }
+
+                _ => {}
+            }
+        }
     }
 }
 
