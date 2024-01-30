@@ -1,63 +1,10 @@
 use crate::board::{self, Board};
 use crate::castle::{CastleKind, CastleRights};
 use crate::color::Color;
+use crate::constants::*;
 use crate::piece::Piece;
 
 use regex::Regex;
-
-const CASTLE_REGEX: &str = r"^(O-O|O-O-O|0-0|0-0-0|o-o|o-o-o)(\+|\#)?$";
-const PAWN_MOVE_REGEX: &str = r"^([a-h])([2-7])(\+|\#)?$";
-const PIECE_MOVE_REGEX: &str = r"^([KQBNR|kqbnr])([a-h])([1-8])(\+|\#)?$";
-const PAWN_CAPTURE_REGEX: &str = r"^([a-h])x([a-h])([2-7])(\+|\#)?$";
-const PIECE_CAPTURE_REGEX: &str = r"^([KQBNR|kqbnr])x([a-h])([1-8])(\+|\#)?$";
-const PAWN_PROMOTION_REGEX: &str = r"^([a-h])(1|8)=([QBNR|qbnr])(\+|\#)?$";
-const PAWN_CAPTURE_PROMOTION_REGEX: &str = r"^([a-h])x([a-h])(1|8)=([QBNR|qbnr])(\+|\#)?$";
-const PIECE_MOVE_ROW_DISAMBIGUATION_REGEX: &str = r"^([KQBNR|kqbnr])([1-8])([a-h])([1-8])(\+|\#)?$";
-const PIECE_MOVE_COLUMN_DISAMBIGUATION_REGEX: &str =
-    r"^([KQBNR|kqbnr])([a-h])([a-h])([1-8])(\+|\#)?$";
-const PIECE_MOVE_ROW_AND_COLUMN_DISAMBIGUATION_REGEX: &str =
-    r"^([KQBNR|kqbnr])([a-h])([1-8])([a-h])([1-8])(\+|\#)?$";
-const PIECE_CAPTURE_ROW_DISAMBIGUATION_REGEX: &str =
-    r"^([KQBNR|kqbnr])([1-8])x([a-h])([1-8])(\+|\#)?$";
-const PIECE_CAPTURE_COLUMN_DISAMBIGUATION_REGEX: &str =
-    r"^([KQBNR|kqbnr])([a-h])x([a-h])([1-8])(\+|\#)?$";
-const PIECE_CAPTURE_ROW_AND_COLUMN_DISAMBIGUATION_REGEX: &str =
-    r"^([KQBNR|kqbnr])([a-h])([1-8])x([a-h])([1-8])(\+|\#)?$";
-
-const PAWN_DIRECTIONS: [(i8, i8); 4] = [(1, 0), (1, 1), (1, -1), (2, 0)];
-const ROOK_DIRECTIONS: [(i8, i8); 4] = [(1, 0), (0, 1), (-1, 0), (0, -1)];
-const BISHOP_DIRECTIONS: [(i8, i8); 4] = [(1, 1), (-1, 1), (-1, -1), (1, -1)];
-const KNIGHT_DIRECTIONS: [(i8, i8); 8] = [
-    (2, 1),
-    (2, -1),
-    (-2, 1),
-    (-2, -1),
-    (1, 2),
-    (1, -2),
-    (-1, 2),
-    (-1, -2),
-];
-const KING_DIRECTIONS: [(i8, i8); 8] = [
-    (1, 0),
-    (1, 1),
-    (1, -1),
-    (0, 1),
-    (-1, 1),
-    (-1, 0),
-    (-1, -1),
-    (0, -1),
-];
-
-const QUEEN_DIRECTIONS: [(i8, i8); 8] = [
-    (1, 0),
-    (1, 1),
-    (0, 1),
-    (-1, 1),
-    (-1, 0),
-    (-1, -1),
-    (0, -1),
-    (1, -1),
-];
 
 #[derive(Debug, Clone)]
 pub struct Move {
@@ -65,8 +12,8 @@ pub struct Move {
     pub dst_square: Option<(usize, usize)>,
     pub promotion: Option<Piece>,
     pub en_passant: Option<(usize, usize)>,
-    pub en_passant_capture: bool,
     pub castle: Option<CastleKind>,
+    pub en_passant_capture: bool,
 }
 
 impl Move {
@@ -311,7 +258,7 @@ fn castle(castle_kind: CastleKind, board: &Board) -> Option<Move> {
 fn pawn_move(dst_square: (usize, usize), board: &Board) -> Option<Move> {
     let dst_square_piece = board.get_piece(dst_square);
 
-    for direction in PAWN_DIRECTIONS.iter() {
+    for direction in PAWN_MOVE_DIRECTIONS.iter() {
         let src_square = match board.active_color {
             Color::Black => (
                 (dst_square.0 as i8 - direction.0) as usize,
@@ -369,7 +316,7 @@ fn pawn_capture(
 ) -> Option<Move> {
     let dst_square_piece = board.get_piece(dst_square);
 
-    for direction in PAWN_DIRECTIONS.iter() {
+    for direction in PAWN_CAPTURE_DIRECTIONS.iter() {
         let src_square = match board.active_color {
             Color::Black => (
                 (dst_square.0 as i8 - direction.0) as usize,
@@ -513,6 +460,8 @@ fn piece_move(
 
             src_square.0 += direction.0;
             src_square.1 += direction.1;
+
+            break;
         }
     }
 

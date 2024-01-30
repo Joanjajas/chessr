@@ -1,13 +1,12 @@
 use crate::castle::{CastleKind, CastleRights};
 use crate::color::Color;
+use crate::constants::*;
 use crate::error::FenParseError;
 use crate::fen;
 use crate::piece::Piece;
 use crate::r#move::Move;
 
-const FEN_STARTING_POSITION: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Board {
     pub pieces: [[Option<Piece>; 8]; 8],
     pub active_color: Color,
@@ -55,6 +54,8 @@ impl Board {
     /// Returns the move that was made.
     pub fn make_move_algebraic(&mut self, r#move: &str) -> Option<Move> {
         let r#move = Move::from_algebraic(r#move, self);
+        let initial_state = self.clone();
+        let initial_check = initial_state.check();
 
         if let Some(ref r#move) = r#move {
             // handle en passant capture
@@ -110,10 +111,82 @@ impl Board {
                 self.set_piece(dst_square, src_square_piece);
             }
 
-            self.set_piece(src_square, None);
+            if Piece::King(self.active_color) != src_square_piece? {
+                self.set_piece(src_square, None);
+            }
+        }
+
+        let last_check = self.check();
+        if initial_check.is_some() && last_check.is_some() && (initial_check == last_check)
+            || last_check.is_some_and(|c| c == self.active_color)
+        {
+            self.active_color = initial_state.active_color;
+            self.castle_rights = initial_state.castle_rights;
+            self.en_passant = initial_state.en_passant;
+            self.halfmove_clock = initial_state.halfmove_clock;
+            self.fullmove_number = initial_state.fullmove_number;
+            self.pieces = initial_state.pieces;
         }
 
         r#move
+    }
+
+    // Returns the color of the king that is in check, if any.
+    fn check(&self) -> Option<Color> {
+        for &color in [Color::White, Color::Black].iter() {
+            let mut king_square: (i8, i8) = (0, 0);
+            for (i, row) in self.pieces.iter().enumerate() {
+                for (j, piece) in row.iter().enumerate() {
+                    if piece == &Some(Piece::King(color.invert())) {
+                        king_square = (i as i8, j as i8);
+                        break;
+                    }
+                }
+            }
+
+            let piece_directions = vec![
+                (Piece::Pawn(color), PAWN_CAPTURE_DIRECTIONS.to_vec()),
+                (Piece::Knight(color), KNIGHT_DIRECTIONS.to_vec()),
+                (Piece::Bishop(color), BISHOP_DIRECTIONS.to_vec()),
+                (Piece::Rook(color), ROOK_DIRECTIONS.to_vec()),
+                (Piece::Queen(color), QUEEN_DIRECTIONS.to_vec()),
+                (Piece::King(color), KING_DIRECTIONS.to_vec()),
+            ];
+
+            for (piece, directions) in piece_directions.iter() {
+                for direction in directions.iter() {
+                    let mut king_square =
+                        (king_square.0 + direction.0, king_square.1 + direction.1);
+
+                    while (0..=7).contains(&king_square.0) && (0..=7).contains(&king_square.1) {
+                        let src_square_piece =
+                            self.get_piece((king_square.0 as usize, king_square.1 as usize));
+
+                        if src_square_piece.is_some_and(|p| &p != piece) {
+                            break;
+                        }
+
+                        if src_square_piece.is_none() {
+                            king_square.0 += direction.0;
+                            king_square.1 += direction.1;
+
+                            match piece {
+                                Piece::Queen(_) => continue,
+                                Piece::Rook(_) => continue,
+                                Piece::Bishop(_) => continue,
+                                Piece::Knight(_) => break,
+                                Piece::King(_) => break,
+                                Piece::Pawn(_) => break,
+                            }
+                        }
+
+                        return Some(color);
+                    }
+                }
+            }
+        }
+
+        None
     }
 
     fn castle_kingside(&mut self, color: Color) {

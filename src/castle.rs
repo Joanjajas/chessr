@@ -14,7 +14,7 @@ impl CastleKind {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum CastleRights {
     WhiteKingside,
     WhiteQueenside,

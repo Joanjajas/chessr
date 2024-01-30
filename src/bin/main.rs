@@ -63,10 +63,11 @@ fn parse_lichess_moves() -> Result<()> {
             sum = 0;
             return;
         }
+        board.make_move_algebraic(w);
         println!("====================");
         println!("{}", board);
+        println!("{}", w);
         println!("{}", board.fen());
-        board.make_move_algebraic(w);
         sum += 1;
     });
     Ok(())
