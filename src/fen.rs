@@ -1,6 +1,7 @@
-use crate::board::{self, Board};
+use crate::board::Board;
 use crate::castle::CastleRights;
 use crate::color::Color;
+use crate::conversion::{algebraic_to_coordinates, coordinates_to_algebraic};
 use crate::error::FenParseError;
 use crate::piece::Piece;
 
@@ -65,7 +66,7 @@ pub fn fen_to_board(fen_string: &str) -> Result<Board, FenParseError> {
 
     let en_passant = match *fen_blocks.get(3).ok_or(FenParseError::FenString)? {
         "-" => None,
-        s => Some(board::algebraic_to_coordinates(s).ok_or(FenParseError::EnPassant)?),
+        s => Some(algebraic_to_coordinates(s).ok_or(FenParseError::EnPassant)?),
     };
 
     // optional fields
@@ -140,8 +141,7 @@ pub fn board_to_fen(board: &Board) -> String {
     // en passant
     match board.en_passant {
         Some((row, column)) => {
-            let algebraic =
-                board::coordinates_to_algebraic((row, column)).unwrap_or("-".to_string());
+            let algebraic = coordinates_to_algebraic((row, column)).unwrap_or("-".to_string());
             fen.push_str(&algebraic);
         }
         None => fen.push('-'),

@@ -1,7 +1,8 @@
-use crate::board::{self, Board};
+use crate::board::Board;
 use crate::castle::{CastleKind, CastleRights};
 use crate::color::Color;
 use crate::constants::*;
+use crate::conversion::algebraic_to_coordinates;
 use crate::piece::Piece;
 
 use regex::Regex;
@@ -10,10 +11,10 @@ use regex::Regex;
 pub struct Move {
     pub src_square: Option<(usize, usize)>,
     pub dst_square: Option<(usize, usize)>,
-    pub promotion: Option<Piece>,
     pub en_passant: Option<(usize, usize)>,
-    pub castle: Option<CastleKind>,
     pub en_passant_capture: bool,
+    pub castle: Option<CastleKind>,
+    pub promotion: Option<Piece>,
 }
 
 impl Move {
@@ -32,7 +33,7 @@ impl Move {
         let re = Regex::new(PAWN_MOVE_REGEX).expect("Invalid pawn move regex");
 
         if re.is_match(r#move) {
-            let dst_square = board::algebraic_to_coordinates(r#move)?;
+            let dst_square = algebraic_to_coordinates(r#move)?;
             return pawn_move(dst_square, board);
         }
 
@@ -41,7 +42,7 @@ impl Move {
 
         if re.is_match(r#move) {
             let piece = Piece::from_algebraic_char(r#move.chars().next()?, board.active_color)?;
-            let dst_square = board::algebraic_to_coordinates(&r#move[1..])?;
+            let dst_square = algebraic_to_coordinates(&r#move[1..])?;
 
             return piece_move(piece, dst_square, None, None, board);
         }
@@ -53,7 +54,7 @@ impl Move {
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
             let piece = Piece::from_algebraic_char(chars.next()?, board.active_color)?;
-            let dst_square = board::algebraic_to_coordinates(&r#move[2..])?;
+            let dst_square = algebraic_to_coordinates(&r#move[2..])?;
             let disambiguation_row = 7 - (chars.next()? as usize - 49);
 
             return piece_move(piece, dst_square, Some(disambiguation_row), None, board);
@@ -66,7 +67,7 @@ impl Move {
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
             let piece = Piece::from_algebraic_char(chars.next().unwrap(), board.active_color)?;
-            let dst_square = board::algebraic_to_coordinates(&r#move[2..])?;
+            let dst_square = algebraic_to_coordinates(&r#move[2..])?;
             let disambiguation_column = chars.next()? as usize - 97;
 
             return piece_move(piece, dst_square, None, Some(disambiguation_column), board);
@@ -79,9 +80,9 @@ impl Move {
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
             let piece = Piece::from_algebraic_char(chars.next()?, board.active_color)?;
-            let dst_square = board::algebraic_to_coordinates(&r#move[3..])?;
+            let dst_square = algebraic_to_coordinates(&r#move[3..])?;
             let (disambiguation_row, disambiguation_column) =
-                board::algebraic_to_coordinates(&r#move[1..3])?;
+                algebraic_to_coordinates(&r#move[1..3])?;
 
             return piece_move(
                 piece,
@@ -96,7 +97,7 @@ impl Move {
         let re = Regex::new(PAWN_CAPTURE_REGEX).expect("Invalid pawn capture regex");
 
         if re.is_match(r#move) {
-            let dst_square = board::algebraic_to_coordinates(&r#move[2..])?;
+            let dst_square = algebraic_to_coordinates(&r#move[2..])?;
             let disambiguation_column = r#move.chars().nth(0)? as usize - 97;
 
             return pawn_capture(dst_square, disambiguation_column, board);
@@ -108,7 +109,7 @@ impl Move {
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
             let piece = Piece::from_algebraic_char(chars.next()?, board.active_color)?;
-            let dst_square = board::algebraic_to_coordinates(&r#move[2..])?;
+            let dst_square = algebraic_to_coordinates(&r#move[2..])?;
 
             return piece_move(piece, dst_square, None, None, board);
         }
@@ -120,7 +121,7 @@ impl Move {
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
             let piece = Piece::from_algebraic_char(chars.next()?, board.active_color)?;
-            let dst_square = board::algebraic_to_coordinates(&r#move[3..])?;
+            let dst_square = algebraic_to_coordinates(&r#move[3..])?;
             let disambiguation_row = 7 - (chars.next()? as usize - 49);
 
             return piece_move(piece, dst_square, Some(disambiguation_row), None, board);
@@ -133,7 +134,7 @@ impl Move {
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
             let piece = Piece::from_algebraic_char(chars.next()?, board.active_color)?;
-            let dst_square = board::algebraic_to_coordinates(&r#move[3..])?;
+            let dst_square = algebraic_to_coordinates(&r#move[3..])?;
             let disambiguation_column = chars.next()? as usize - 97;
 
             return piece_move(piece, dst_square, None, Some(disambiguation_column), board);
@@ -146,9 +147,9 @@ impl Move {
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
             let piece = Piece::from_algebraic_char(chars.next()?, board.active_color)?;
-            let dst_square = board::algebraic_to_coordinates(&r#move[4..])?;
+            let dst_square = algebraic_to_coordinates(&r#move[4..])?;
             let (disambiguation_row, disambiguation_column) =
-                board::algebraic_to_coordinates(&r#move[1..3])?;
+                algebraic_to_coordinates(&r#move[1..3])?;
 
             return piece_move(
                 piece,
@@ -163,7 +164,7 @@ impl Move {
         let re = Regex::new(PAWN_PROMOTION_REGEX).expect("Invalid pawn promotion regex");
 
         if re.is_match(r#move) {
-            let dst_square = board::algebraic_to_coordinates(&r#move[0..2])?;
+            let dst_square = algebraic_to_coordinates(&r#move[0..2])?;
             let promotion_piece =
                 Piece::from_algebraic_char(r#move.chars().nth(3)?, board.active_color)?;
 
@@ -180,7 +181,7 @@ impl Move {
             Regex::new(PAWN_CAPTURE_PROMOTION_REGEX).expect("Invalid pawn capture promotion regex");
 
         if re.is_match(r#move) {
-            let dst_square = board::algebraic_to_coordinates(&r#move[2..4]);
+            let dst_square = algebraic_to_coordinates(&r#move[2..4]);
             let disambiguation = r#move.chars().nth(0)? as usize - 97;
             let promotion_piece =
                 Piece::from_algebraic_char(r#move.chars().nth(5)?, board.active_color)?;
@@ -199,33 +200,25 @@ impl Move {
 }
 
 fn castle(castle_kind: CastleKind, board: &Board) -> Option<Move> {
-    let white_can_castle_kingside = board.castle_rights.contains(&CastleRights::WhiteKingside)
-        && board.get_piece((7, 5)).is_none()
-        && board.get_piece((7, 6)).is_none();
-
-    let black_can_caslte_kingside = board.castle_rights.contains(&CastleRights::BlackKingside)
-        && board.get_piece((0, 5)).is_none()
-        && board.get_piece((0, 6)).is_none();
-
-    let white_can_castle_queenside = board.castle_rights.contains(&CastleRights::WhiteQueenside)
-        && board.get_piece((7, 1)).is_none()
-        && board.get_piece((7, 2)).is_none()
-        && board.get_piece((7, 3)).is_none();
-
-    let black_can_caslte_queenside = board.castle_rights.contains(&CastleRights::BlackQueenside)
-        && board.get_piece((0, 1)).is_none()
-        && board.get_piece((0, 2)).is_none()
-        && board.get_piece((0, 3)).is_none();
-
     match castle_kind {
         CastleKind::Kingside => match board.active_color {
             Color::White => {
-                if !white_can_castle_kingside {
+                if !board.castle_rights.contains(&CastleRights::WhiteKingside)
+                    || board.square_piece_threats((7, 5), Color::Black).is_some()
+                    || board.square_piece_threats((7, 6), Color::Black).is_some()
+                    || board.get_piece((7, 5)).is_some()
+                    || board.get_piece((7, 6)).is_some()
+                {
                     return None;
                 }
             }
             Color::Black => {
-                if !black_can_caslte_kingside {
+                if board.castle_rights.contains(&CastleRights::BlackKingside)
+                    || board.square_piece_threats((0, 5), Color::White).is_some()
+                    || board.square_piece_threats((0, 6), Color::White).is_some()
+                    || board.get_piece((0, 5)).is_some()
+                    || board.get_piece((0, 6)).is_some()
+                {
                     return None;
                 }
             }
@@ -233,12 +226,26 @@ fn castle(castle_kind: CastleKind, board: &Board) -> Option<Move> {
 
         CastleKind::Queenside => match board.active_color {
             Color::White => {
-                if !white_can_castle_queenside {
+                if board.castle_rights.contains(&CastleRights::WhiteQueenside)
+                    || board.square_piece_threats((7, 1), Color::Black).is_some()
+                    || board.square_piece_threats((7, 2), Color::Black).is_some()
+                    || board.square_piece_threats((7, 3), Color::Black).is_some()
+                    || board.get_piece((7, 1)).is_some()
+                    || board.get_piece((7, 2)).is_some()
+                    || board.get_piece((7, 3)).is_some()
+                {
                     return None;
                 }
             }
             Color::Black => {
-                if !black_can_caslte_queenside {
+                if board.castle_rights.contains(&CastleRights::BlackQueenside)
+                    || board.square_piece_threats((0, 1), Color::White).is_some()
+                    || board.square_piece_threats((0, 2), Color::White).is_some()
+                    || board.square_piece_threats((0, 3), Color::White).is_some()
+                    || board.get_piece((0, 1)).is_some()
+                    || board.get_piece((0, 2)).is_some()
+                    || board.get_piece((0, 3)).is_some()
+                {
                     return None;
                 }
             }
