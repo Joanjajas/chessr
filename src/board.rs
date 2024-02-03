@@ -4,7 +4,7 @@ use crate::constants::*;
 use crate::error::FenParseError;
 use crate::fen;
 use crate::piece::Piece;
-use crate::r#move::Move;
+use crate::r#move::{self, Move};
 
 /// Represents a chess board.
 #[derive(Debug, Clone)]
@@ -48,52 +48,74 @@ impl Board {
         fen::board_to_fen(self)
     }
 
+    /// Returns the piece located at the given square, if any.
+    pub fn get_piece(&self, square: (usize, usize)) -> Option<Piece> {
+        if (0..=7).contains(&square.0) && (0..=7).contains(&square.1) {
+            return self.pieces[square.0][square.1];
+        }
+
+        None
+    }
+
+    /// Sets the piece at the given square.
+    /// To remove a piece from a square, pass `None` as the piece.
+    pub fn set_piece(&mut self, square: (usize, usize), piece: Option<Piece>) {
+        if (0..=7).contains(&square.0) && (0..=7).contains(&square.1) {
+            self.pieces[square.0][square.1] = piece;
+        }
+    }
+
     /// Makes a move on the board given its algebraic notation.
     /// If the move notation is invalid or the move is not legal, nothing will happen.
     /// Also returns the move that was made.
-    pub fn make_move_algebraic(&mut self, r#move: &str) -> Option<Move> {
-        let r#move = Move::from_algebraic(r#move, self);
-        let initial_state = self.clone();
-        let initial_check = initial_state.check();
+    /// [Wikipedia](https://en.wikipedia.org/wiki/Algebraic_notation_(chess))
+    pub fn make_move_algebraic(&mut self, algebraic: &str) -> Option<Move> {
+        let r#move = Move::from_algebraic(algebraic, self);
 
-        if let Some(ref r#move) = r#move {
-            // handle en passanapture
-            if r#move.en_passant_capture {
-                let en_passant_square = self.en_passant?;
+        if let Some(r#move) = r#move {
+            self.make_move(&r#move);
+            return Some(r#move);
+        }
 
-                // calculate the square of the pawn that was captured
-                let en_passant_capture_square = match self.active_color {
-                    Color::White => (en_passant_square.0 + 1, en_passant_square.1),
-                    Color::Black => (en_passant_square.0 - 1, en_passant_square.1),
-                };
+        None
+    }
 
-                self.set_piece(en_passant_capture_square, None);
-            }
+    pub fn make_move(&mut self, r#move: &Move) {
+        // handle en pasant capture
+        if r#move.en_passant_capture {
+            let en_passant_square = self.en_passant.unwrap();
 
-            // update the board state
-            self.update_castle_rights(r#move);
-            self.active_color = self.active_color.invert();
-            self.en_passant = r#move.en_passant;
-            self.halfmove_clock += 1;
-
-            // fullmove number (increases every turn)
-            self.fullmove_number += match self.active_color {
-                Color::White => 1,
-                Color::Black => 0,
+            // calculate the square of the pawn that was captured
+            let en_passant_capture_square = match self.active_color {
+                Color::White => (en_passant_square.0 + 1, en_passant_square.1),
+                Color::Black => (en_passant_square.0 - 1, en_passant_square.1),
             };
 
-            // handle castling
-            if let Some(ref castle) = r#move.castle {
-                match castle {
-                    CastleKind::Kingside => self.castle_kingside(self.active_color.invert()),
-                    CastleKind::Queenside => self.castle_queenside(self.active_color.invert()),
-                }
+            self.set_piece(en_passant_capture_square, None);
+        }
 
-                return Some(r#move.clone());
+        // update the board state
+        self.update_castle_rights(r#move);
+        self.active_color = self.active_color.invert();
+        self.en_passant = r#move.en_passant;
+        self.halfmove_clock += 1;
+
+        // fullmove number (increases every turn)
+        self.fullmove_number += match self.active_color {
+            Color::White => 1,
+            Color::Black => 0,
+        };
+
+        // handle castling
+        if let Some(ref castle) = r#move.castle {
+            match castle {
+                CastleKind::Kingside => self.castle_kingside(self.active_color.invert()),
+                CastleKind::Queenside => self.castle_queenside(self.active_color.invert()),
             }
+        }
 
-            let src_square = r#move.src_square?;
-            let dst_square = r#move.dst_square?;
+        // handle normal move and promotion
+        if let (Some(src_square), Some(dst_square)) = (r#move.src_square, r#move.dst_square) {
             let src_square_piece = self.get_piece(src_square);
             let dst_square_piece = self.get_piece(dst_square);
 
@@ -105,59 +127,22 @@ impl Board {
                 self.halfmove_clock = 0;
             }
 
-            // handle promotion
             if let Some(promotion_piece) = r#move.promotion {
                 self.set_piece(dst_square, Some(promotion_piece));
             } else {
                 self.set_piece(dst_square, src_square_piece);
-            }
-
-            if Piece::King(self.active_color) != src_square_piece? {
                 self.set_piece(src_square, None);
             }
-        }
 
-        let last_check = self.check();
-        if initial_check.is_some() && last_check.is_some() && (initial_check == last_check)
-            || last_check.is_some_and(|c| c == self.active_color.invert())
-        {
-            self.active_color = initial_state.active_color;
-            self.castle_rights = initial_state.castle_rights;
-            self.en_passant = initial_state.en_passant;
-            self.halfmove_clock = initial_state.halfmove_clock;
-            self.fullmove_number = initial_state.fullmove_number;
-            self.pieces = initial_state.pieces;
-
-            return None;
-        }
-
-        if self.halfmove_clock >= 50 {
-            println!("Draw by 50-move rule");
-            std::process::exit(0);
-        }
-
-        r#move
-    }
-
-    /// Returns the piece located at the given square, if any.
-    pub fn get_piece(&self, square: (usize, usize)) -> Option<Piece> {
-        if (0..=7).contains(&square.0) && (0..=7).contains(&square.1) {
-            return self.pieces[square.0][square.1];
-        }
-
-        None
-    }
-
-    /// Sets the piece at the given square.
-    /// To remove a piece from the board, pass `None` as the piece.
-    pub fn set_piece(&mut self, square: (usize, usize), piece: Option<Piece>) {
-        if (0..=7).contains(&square.0) && (0..=7).contains(&square.1) {
-            self.pieces[square.0][square.1] = piece;
+            if self.halfmove_clock >= 50 {
+                println!("Draw by 50-move rule");
+                std::process::exit(0);
+            }
         }
     }
 
     /// Returns the pieces of a given color that are attacking the given square.
-    pub(crate) fn square_piece_threats(
+    pub fn square_piece_threats(
         &self,
         src_square: (usize, usize),
         color: Color,
@@ -177,8 +162,14 @@ impl Board {
             for direction in directions {
                 let mut src_square = match piece {
                     Piece::Pawn(_) => match color {
-                        Color::White => (src_square.0 as i8 + 1, src_square.1 as i8 + 1),
-                        Color::Black => (src_square.0 as i8 - 1, src_square.1 as i8 + 1),
+                        Color::White => (
+                            src_square.0 as i8 + direction.0,
+                            src_square.1 as i8 + direction.1,
+                        ),
+                        Color::Black => (
+                            src_square.0 as i8 - direction.0,
+                            src_square.1 as i8 + direction.1,
+                        ),
                     },
 
                     _ => (
@@ -226,29 +217,64 @@ impl Board {
         }
     }
 
-    /// Looks for checks in a position.
-    /// Returns the color of the king under check if any.
-    fn check(&self) -> Option<Color> {
-        for &color in [Color::White, Color::Black].iter() {
-            let mut king_square = (0, 0);
+    pub fn legal_moves(&self) -> Vec<Move> {
+        let mut legal_moves = Vec::new();
 
-            for (row, col) in self.pieces.iter().enumerate() {
-                for (col, piece) in col.iter().enumerate() {
-                    if piece == &Some(Piece::King(color)) {
-                        king_square = (row, col);
+        for (row, col) in self.pieces.iter().enumerate() {
+            for (col, piece) in col.iter().enumerate() {
+                if piece.is_some_and(|p| p.color() == &self.active_color) {
+                    let piece = piece.unwrap();
+
+                    match piece {
+                        Piece::Pawn(_) => {
+                            legal_moves.append(&mut r#move::pawn_legal_moves((row, col), self))
+                        }
+                        _ => legal_moves.append(&mut r#move::piece_legal_moves(
+                            &piece,
+                            (row, col),
+                            self,
+                        )),
                     }
                 }
             }
+        }
 
-            if self
-                .square_piece_threats(king_square, color.invert())
-                .is_some()
-            {
-                return Some(color);
+        // castling
+        if r#move::castle(CastleKind::Kingside, self).is_some() {
+            legal_moves.push(r#move::castle(CastleKind::Kingside, self).unwrap());
+        }
+
+        if r#move::castle(CastleKind::Queenside, self).is_some() {
+            legal_moves.push(r#move::castle(CastleKind::Queenside, self).unwrap());
+        }
+
+        legal_moves
+    }
+
+    /// Looks for checks in a position.
+    pub fn check(&self) -> bool {
+        let mut king_square = None;
+
+        for (row, col) in self.pieces.iter().enumerate() {
+            for (col, piece) in col.iter().enumerate() {
+                if piece == &Some(Piece::King(self.active_color)) {
+                    king_square = Some((row, col));
+                }
             }
         }
 
-        None
+        self.square_piece_threats(king_square.unwrap(), self.active_color.invert())
+            .is_some()
+    }
+
+    pub fn checkmate(&self) -> bool {
+        let legal_moves = self.legal_moves();
+
+        if legal_moves.is_empty() {
+            return true;
+        }
+
+        false
     }
 
     /// Castles kingside for the given color.
@@ -293,8 +319,9 @@ impl Board {
         self.set_piece((row, 3), Some(rook));
     }
 
-    /// Updates the castle rights after a move.
+    /// Updates the castle rights given a move.
     fn update_castle_rights(&mut self, r#move: &Move) {
+        // if the king moves, the player loses the right to castle kingside and queenside
         if r#move.castle.is_some() {
             match self.active_color {
                 Color::White => self.castle_rights.retain(|x| {

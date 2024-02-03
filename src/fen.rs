@@ -5,7 +5,9 @@ use crate::conversion::{algebraic_to_coordinates, coordinates_to_algebraic};
 use crate::error::FenParseError;
 use crate::piece::Piece;
 
-/// Creates a new board from a FEN string
+/// Creates a new board from the given FEN string
+/// Forsyth–Edwards Notation (FEN) is a standard notation for describing a particular board position of a chess game.
+/// [Chess.com](https://www.chess.com/terms/fen-chess)
 pub fn fen_to_board(fen_string: &str) -> Result<Board, FenParseError> {
     let mut pieces = [[None; 8]; 8];
     let fen_blocks: Vec<&str> = fen_string.split_whitespace().collect();
@@ -92,6 +94,9 @@ pub fn fen_to_board(fen_string: &str) -> Result<Board, FenParseError> {
     })
 }
 
+/// Converts a given board to a FEN string
+/// Forsyth–Edwards Notation (FEN) is a standard notation for describing a particular board position of a chess game.
+/// [Chess.com](https://www.chess.com/terms/fen-chess)
 pub fn board_to_fen(board: &Board) -> String {
     let mut fen = String::new();
 

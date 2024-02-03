@@ -1,3 +1,4 @@
+/// Represents errors that can occur when parsing a FEN string.
 #[derive(Debug)]
 pub enum FenParseError {
     FenString,

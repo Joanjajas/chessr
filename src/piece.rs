@@ -1,5 +1,6 @@
 use crate::color::Color;
 
+/// Represents a chess piece.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Piece {
     Pawn(Color),
@@ -11,6 +12,7 @@ pub enum Piece {
 }
 
 impl Piece {
+    /// Returns the color of the piece.
     pub fn color(&self) -> &Color {
         match self {
             Piece::Pawn(color) => color,
@@ -21,6 +23,8 @@ impl Piece {
             Piece::King(color) => color,
         }
     }
+
+    /// Tries to create a piece from a FEN character.
     pub fn from_fen_char(c: char) -> Option<Piece> {
         match c {
             'p' => Some(Piece::Pawn(Color::Black)),
@@ -57,6 +61,7 @@ impl Piece {
         }
     }
 
+    /// Tries to create a piece from an algebraic notation character.
     pub fn from_algebraic_char(c: char, color: Color) -> Option<Piece> {
         match c.to_ascii_lowercase() {
             'p' => Some(Piece::Pawn(color)),

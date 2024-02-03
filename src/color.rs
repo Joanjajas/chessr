@@ -1,3 +1,4 @@
+/// Represents the color of a piece or a player.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Color {
     White,
@@ -13,6 +14,9 @@ impl Color {
         }
     }
 
+    /// Inverts the color.
+    /// White -> Black
+    /// Black -> White
     pub fn invert(&self) -> Color {
         match self {
             Color::White => Color::Black,

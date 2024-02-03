@@ -1,3 +1,4 @@
+/// Represents a castle kind.
 #[derive(Debug, Clone, PartialEq)]
 pub enum CastleKind {
     Kingside,
@@ -5,6 +6,7 @@ pub enum CastleKind {
 }
 
 impl CastleKind {
+    /// Tries to create a castle kind from an algebraic notation.
     pub fn from_algebraic(str: &str) -> Option<CastleKind> {
         match str {
             "O-O" | "0-0" | "o-o" => Some(CastleKind::Kingside),
@@ -14,6 +16,7 @@ impl CastleKind {
     }
 }
 
+/// Represents the castle rights of a player.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum CastleRights {
     WhiteKingside,
@@ -23,6 +26,7 @@ pub enum CastleRights {
 }
 
 impl CastleRights {
+    /// Tries to create a castle right from a FEN character.
     pub fn from_fen_char(c: char) -> Option<CastleRights> {
         match c {
             'K' => Some(CastleRights::WhiteKingside),
@@ -33,7 +37,7 @@ impl CastleRights {
         }
     }
 
-    /// Returns a FEN representation of the castle rights.
+    /// Returns a FEN representation of the castle right.
     pub fn fen(&self) -> char {
         match self {
             CastleRights::WhiteKingside => 'K',
