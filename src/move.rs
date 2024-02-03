@@ -296,6 +296,7 @@ pub fn piece_legal_moves(piece: &Piece, src_square: (usize, usize), board: &Boar
 pub fn pawn_legal_moves(src_square: (usize, usize), board: &Board) -> Vec<Move> {
     let mut legal_moves = Vec::new();
 
+    // Pawn forward move
     for direction in PAWN_MOVE_DIRECTIONS.iter() {
         let dst_square = match board.active_color {
             Color::Black => (
@@ -346,6 +347,7 @@ pub fn pawn_legal_moves(src_square: (usize, usize), board: &Board) -> Vec<Move> 
         legal_moves.push(r#move);
     }
 
+    // Pawn capture
     for direction in PAWN_CAPTURE_DIRECTIONS.iter() {
         let dst_square = match board.active_color {
             Color::Black => (
@@ -399,8 +401,8 @@ pub fn castle(castle_kind: CastleKind, board: &Board) -> Option<Move> {
         CastleKind::Kingside => match board.active_color {
             Color::White => {
                 if !board.castle_rights.contains(&CastleRights::WhiteKingside)
-                    || board.square_piece_threats((7, 5), Color::Black).is_some()
-                    || board.square_piece_threats((7, 6), Color::Black).is_some()
+                    || board.square_attackers((7, 5), Color::Black).is_some()
+                    || board.square_attackers((7, 6), Color::Black).is_some()
                     || board.get_piece((7, 5)).is_some()
                     || board.get_piece((7, 6)).is_some()
                 {
@@ -409,8 +411,8 @@ pub fn castle(castle_kind: CastleKind, board: &Board) -> Option<Move> {
             }
             Color::Black => {
                 if !board.castle_rights.contains(&CastleRights::BlackKingside)
-                    || board.square_piece_threats((0, 5), Color::White).is_some()
-                    || board.square_piece_threats((0, 6), Color::White).is_some()
+                    || board.square_attackers((0, 5), Color::White).is_some()
+                    || board.square_attackers((0, 6), Color::White).is_some()
                     || board.get_piece((0, 5)).is_some()
                     || board.get_piece((0, 6)).is_some()
                 {
@@ -422,9 +424,9 @@ pub fn castle(castle_kind: CastleKind, board: &Board) -> Option<Move> {
         CastleKind::Queenside => match board.active_color {
             Color::White => {
                 if !board.castle_rights.contains(&CastleRights::WhiteQueenside)
-                    || board.square_piece_threats((7, 1), Color::Black).is_some()
-                    || board.square_piece_threats((7, 2), Color::Black).is_some()
-                    || board.square_piece_threats((7, 3), Color::Black).is_some()
+                    || board.square_attackers((7, 1), Color::Black).is_some()
+                    || board.square_attackers((7, 2), Color::Black).is_some()
+                    || board.square_attackers((7, 3), Color::Black).is_some()
                     || board.get_piece((7, 1)).is_some()
                     || board.get_piece((7, 2)).is_some()
                     || board.get_piece((7, 3)).is_some()
@@ -434,9 +436,9 @@ pub fn castle(castle_kind: CastleKind, board: &Board) -> Option<Move> {
             }
             Color::Black => {
                 if !board.castle_rights.contains(&CastleRights::BlackQueenside)
-                    || board.square_piece_threats((0, 1), Color::White).is_some()
-                    || board.square_piece_threats((0, 2), Color::White).is_some()
-                    || board.square_piece_threats((0, 3), Color::White).is_some()
+                    || board.square_attackers((0, 1), Color::White).is_some()
+                    || board.square_attackers((0, 2), Color::White).is_some()
+                    || board.square_attackers((0, 3), Color::White).is_some()
                     || board.get_piece((0, 1)).is_some()
                     || board.get_piece((0, 2)).is_some()
                     || board.get_piece((0, 3)).is_some()

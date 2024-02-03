@@ -21,14 +21,12 @@ fn run() -> Result<()> {
             let mut fen = String::new();
             std::io::stdin().read_line(&mut fen)?;
             let board = board::Board::from_fen(&fen)?;
-            println!("{}", board.legal_moves().len());
 
             play(board)?;
             Ok(())
         }
         "new" => {
             let board = board::Board::new();
-            println!("{}", board.legal_moves().len());
             play(board)?;
             Ok(())
         }
@@ -45,7 +43,6 @@ fn play(mut board: board::Board) -> Result<()> {
         std::io::stdin().read_line(&mut r#move)?;
         board.make_move_algebraic(r#move.trim());
         println!("{}", board.fen());
-        println!("{}", board.legal_moves().len());
     }
 }
 
