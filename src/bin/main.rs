@@ -43,7 +43,14 @@ fn play(mut board: board::Board) -> Result<()> {
         std::io::stdin().read_line(&mut r#move)?;
         board.make_move_algebraic(r#move.trim());
         println!("{}", board.fen());
+
+        if board.checkmate() {
+            println!("Checkmate!");
+            break;
+        }
     }
+
+    Ok(())
 }
 
 fn parse_lichess_moves() -> Result<()> {

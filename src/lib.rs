@@ -6,4 +6,5 @@ mod conversion;
 mod error;
 mod fen;
 mod r#move;
+mod movegen;
 mod piece;

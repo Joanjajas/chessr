@@ -3,6 +3,7 @@ use crate::color::Color;
 use crate::constants::*;
 use crate::error::FenParseError;
 use crate::fen;
+use crate::movegen;
 use crate::piece::Piece;
 use crate::r#move::{self, Move};
 
@@ -48,24 +49,45 @@ impl Board {
         fen::board_to_fen(self)
     }
 
-    /// Makes a move on the board given its algebraic notation. [Wikipedia](https://en.wikipedia.org/wiki/Algebraic_notation_(chess))
+    /// Returns if there is a check in the current position.
+    pub fn check(&self) -> bool {
+        self.square_attackers(self.king_square(), self.active_color.invert())
+            .is_some()
+    }
+
+    /// Returns if there is a checkmate in the current position.
+    pub fn checkmate(&self) -> bool {
+        self.check() && self.legal_moves().is_empty()
+    }
+
+    /// Returns if there is a stalemate in the current position.
+    pub fn stalemate(&self) -> bool {
+        !self.check() && self.legal_moves().is_empty()
+    }
+
+    /// Returns if 50 moves have been made without a pawn move or a capture.
+    pub fn fifty_move_rule(&self) -> bool {
+        self.halfmove_clock >= 100
+    }
+
+    /// Makes a move on the board given its algebraic notation. [Chesscom](https://www.chess.com/terms/chess-notation)
     /// If the move notation is invalid or the move is not legal, nothing will happen.
     /// Also returns the move that was made.
     pub fn make_move_algebraic(&mut self, algebraic: &str) -> Option<Move> {
         let r#move = Move::from_algebraic(algebraic, self);
 
-        if let Some(r#move) = r#move {
-            self.make_move(&r#move);
-            return Some(r#move);
+        if let Some(ref r#move) = r#move {
+            self.make_move(r#move);
         }
 
-        None
+        r#move
     }
 
-    /// Returns a list of legal moves for the current color.
+    /// Returns a list of all possible legal moves in the current position.
     pub fn legal_moves(&self) -> Vec<Move> {
         let mut legal_moves = Vec::new();
 
+        // piece moves
         for (row, col) in self.pieces.iter().enumerate() {
             for (col, piece) in col.iter().enumerate() {
                 if piece.is_some_and(|p| p.color() != &self.active_color) || piece.is_none() {
@@ -74,9 +96,9 @@ impl Board {
 
                 match piece.unwrap() {
                     Piece::Pawn(_) => {
-                        legal_moves.append(&mut r#move::pawn_legal_moves((row, col), self))
+                        legal_moves.append(&mut movegen::pawn_legal_moves((row, col), self))
                     }
-                    _ => legal_moves.append(&mut r#move::piece_legal_moves(
+                    _ => legal_moves.append(&mut movegen::piece_legal_moves(
                         &piece.unwrap(),
                         (row, col),
                         self,
@@ -85,39 +107,17 @@ impl Board {
             }
         }
 
-        // castling
-        let kingside_castle = r#move::castle(CastleKind::Kingside, self);
-        if kingside_castle.is_some() {
-            legal_moves.push(kingside_castle.unwrap());
+        // kingside castling
+        if let Some(castle) = r#move::castle(CastleKind::Kingside, self) {
+            legal_moves.push(castle);
         }
 
-        let queenside_castle = r#move::castle(CastleKind::Queenside, self);
-        if queenside_castle.is_some() {
-            legal_moves.push(queenside_castle.unwrap());
+        // queenside castling
+        if let Some(castle) = r#move::castle(CastleKind::Queenside, self) {
+            legal_moves.push(castle);
         }
 
         legal_moves
-    }
-
-    /// Returns if the current color is in check.
-    pub fn check(&self) -> bool {
-        let mut king_square = None;
-
-        for (row, col) in self.pieces.iter().enumerate() {
-            for (col, piece) in col.iter().enumerate() {
-                if piece == &Some(Piece::King(self.active_color)) {
-                    king_square = Some((row, col));
-                }
-            }
-        }
-
-        self.square_attackers(king_square.unwrap(), self.active_color.invert())
-            .is_some()
-    }
-
-    /// Returns if the current color is in checkmate.
-    pub fn checkmate(&self) -> bool {
-        self.check() && self.legal_moves().is_empty()
     }
 
     /// Returns the piece located at the given square, if any.
@@ -137,6 +137,8 @@ impl Board {
         }
     }
 
+    /// Makes a move on the board, updating the board state.
+    /// This method assumes that the move is legal and valid, otherwise undefined behavior may occur.
     pub(crate) fn make_move(&mut self, r#move: &Move) {
         // handle en pasant capture
         if r#move.en_passant_capture {
@@ -164,6 +166,9 @@ impl Board {
             let src_square_piece = self.get_piece(src_square);
             let dst_square_piece = self.get_piece(dst_square);
 
+            // update castle rights before removing the souece square piece
+            self.update_castle_rights(r#move);
+
             // reset halfmove clock if a pawn is moved or a piece is captured
             if src_square_piece == Some(Piece::Pawn(self.active_color))
                 || dst_square_piece.is_some()
@@ -182,22 +187,20 @@ impl Board {
             }
         }
 
-        // update the board state
-        self.update_castle_rights(r#move);
         self.active_color = self.active_color.invert();
         self.en_passant = r#move.en_passant;
-
-        // fullmove number (increases every turn)
         self.fullmove_number += match self.active_color {
             Color::White => 1,
             Color::Black => 0,
         };
+    }
 
-        // check for draw by 50-move rule
-        if self.halfmove_clock >= 50 {
-            println!("Draw by 50-move rule");
-            std::process::exit(0);
-        }
+    /// Returns if a given move will leave the king in check
+    pub(crate) fn future_check(&self, r#move: &Move) -> bool {
+        let mut cloned_board = self.clone();
+        cloned_board.make_move(r#move);
+        cloned_board.active_color = cloned_board.active_color.invert();
+        cloned_board.check()
     }
 
     /// Returns the pieces of a given color that are attacking the given square.
@@ -263,7 +266,7 @@ impl Board {
                         src_square.0 += direction.0;
                         src_square.1 += direction.1;
 
-                        attacking_pieces.push(piece.clone());
+                        attacking_pieces.push(*piece);
                     }
                 }
             }
@@ -316,6 +319,20 @@ impl Board {
 
         self.set_piece((row, 2), Some(king));
         self.set_piece((row, 3), Some(rook));
+    }
+
+    /// Returns the square of the king of the current active color.
+    fn king_square(&self) -> (usize, usize) {
+        for (row, col) in self.pieces.iter().enumerate() {
+            for (col, piece) in col.iter().enumerate() {
+                if piece == &Some(Piece::King(self.active_color)) {
+                    return (row, col);
+                }
+            }
+        }
+
+        // king can't be missing from the battle!
+        unreachable!()
     }
 
     /// Updates the castle rights given a move.
