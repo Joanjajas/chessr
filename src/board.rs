@@ -49,8 +49,7 @@ impl Board {
 
     /// Returns true if there is a check in the current position.
     pub fn check(&self) -> bool {
-        self.square_attackers(self.king_square(), self.active_color.invert())
-            .is_some()
+        !self.square_attackers(self.king_square()).is_empty()
     }
 
     /// Returns true if there is a checkmate in the current position.
@@ -87,20 +86,16 @@ impl Board {
     }
 
     /// Returns the piece located at the given square, if any.
+    /// If the square provided is out of bounds, the method will panic.
     pub(crate) fn get_piece(&self, square: (usize, usize)) -> Option<Piece> {
-        if (0..=7).contains(&square.0) && (0..=7).contains(&square.1) {
-            return self.pieces[square.0][square.1];
-        }
-
-        None
+        return self.pieces[square.0][square.1];
     }
 
     /// Sets the piece at the given square.
     /// To remove a piece from a square, pass `None` as the piece.
+    /// If the square provided is out of bounds, the method will panic.
     pub(crate) fn set_piece(&mut self, square: (usize, usize), piece: Option<Piece>) {
-        if (0..=7).contains(&square.0) && (0..=7).contains(&square.1) {
-            self.pieces[square.0][square.1] = piece;
-        }
+        self.pieces[square.0][square.1] = piece;
     }
 
     /// Makes a move on the board, updating the board state.
@@ -132,7 +127,7 @@ impl Board {
             let src_square_piece = self.get_piece(src_square);
             let dst_square_piece = self.get_piece(dst_square);
 
-            // update castle rights before removing the souece square piece
+            // update castle rights before removing the source square piece
             self.update_castle_rights(r#move);
 
             // reset halfmove clock if a pawn is moved or a piece is captured
@@ -170,13 +165,10 @@ impl Board {
         cloned_board.check()
     }
 
-    /// Returns the pieces of a given color that are attacking the given square.
-    pub(crate) fn square_attackers(
-        &self,
-        src_square: (usize, usize),
-        color: Color,
-    ) -> Option<Vec<Piece>> {
+    /// Returns the pieces of the opposite active color that are attacking the given square.
+    pub(crate) fn square_attackers(&self, src_square: (usize, usize)) -> Vec<Piece> {
         let mut attacking_pieces = Vec::new();
+        let color = self.active_color.invert();
 
         let piece_directions = vec![
             (Piece::Pawn(color), PAWN_CAPTURE_DIRECTIONS.to_vec()),
@@ -239,11 +231,7 @@ impl Board {
             }
         }
 
-        if attacking_pieces.is_empty() {
-            None
-        } else {
-            Some(attacking_pieces)
-        }
+        attacking_pieces
     }
 
     /// Castles kingside for the given color.

@@ -216,8 +216,8 @@ pub fn castle(castle_kind: CastleKind, board: &Board) -> Option<Move> {
         CastleKind::Kingside => match board.active_color {
             Color::White => {
                 if !board.castle_rights.contains(&CastleRights::WhiteKingside)
-                    || board.square_attackers((7, 5), Color::Black).is_some()
-                    || board.square_attackers((7, 6), Color::Black).is_some()
+                    || !board.square_attackers((7, 5)).is_empty()
+                    || !board.square_attackers((7, 6)).is_empty()
                     || board.get_piece((7, 5)).is_some()
                     || board.get_piece((7, 6)).is_some()
                 {
@@ -226,8 +226,8 @@ pub fn castle(castle_kind: CastleKind, board: &Board) -> Option<Move> {
             }
             Color::Black => {
                 if !board.castle_rights.contains(&CastleRights::BlackKingside)
-                    || board.square_attackers((0, 5), Color::White).is_some()
-                    || board.square_attackers((0, 6), Color::White).is_some()
+                    || !board.square_attackers((0, 5)).is_empty()
+                    || !board.square_attackers((0, 6)).is_empty()
                     || board.get_piece((0, 5)).is_some()
                     || board.get_piece((0, 6)).is_some()
                 {
@@ -239,9 +239,9 @@ pub fn castle(castle_kind: CastleKind, board: &Board) -> Option<Move> {
         CastleKind::Queenside => match board.active_color {
             Color::White => {
                 if !board.castle_rights.contains(&CastleRights::WhiteQueenside)
-                    || board.square_attackers((7, 1), Color::Black).is_some()
-                    || board.square_attackers((7, 2), Color::Black).is_some()
-                    || board.square_attackers((7, 3), Color::Black).is_some()
+                    || !board.square_attackers((7, 1)).is_empty()
+                    || !board.square_attackers((7, 2)).is_empty()
+                    || !board.square_attackers((7, 3)).is_empty()
                     || board.get_piece((7, 1)).is_some()
                     || board.get_piece((7, 2)).is_some()
                     || board.get_piece((7, 3)).is_some()
@@ -251,9 +251,9 @@ pub fn castle(castle_kind: CastleKind, board: &Board) -> Option<Move> {
             }
             Color::Black => {
                 if !board.castle_rights.contains(&CastleRights::BlackQueenside)
-                    || board.square_attackers((0, 1), Color::White).is_some()
-                    || board.square_attackers((0, 2), Color::White).is_some()
-                    || board.square_attackers((0, 3), Color::White).is_some()
+                    || !board.square_attackers((0, 1)).is_empty()
+                    || !board.square_attackers((0, 2)).is_empty()
+                    || !board.square_attackers((0, 3)).is_empty()
                     || board.get_piece((0, 1)).is_some()
                     || board.get_piece((0, 2)).is_some()
                     || board.get_piece((0, 3)).is_some()

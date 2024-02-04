@@ -108,6 +108,12 @@ fn pawn_legal_moves(src_square: (usize, usize), board: &Board) -> Vec<Move> {
             (src_square.0 as i8 + direction.0) as usize,
             (src_square.1 as i8 + direction.1) as usize,
         );
+
+        // if the destination square is out of bounds, skip and continue with the next direction
+        if !(0..=7).contains(&dst_square.0) || !(0..=7).contains(&dst_square.1) {
+            continue;
+        }
+
         let dst_square_piece = board.get_piece(dst_square);
 
         // check if is a forward move and is valid
