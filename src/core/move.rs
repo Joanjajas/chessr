@@ -505,9 +505,10 @@ pub fn piece_move(
                 castle: None,
             };
 
+            src_square.0 += direction.0;
+            src_square.1 += direction.1;
+
             if board.future_check(&r#move) {
-                src_square.0 += direction.0;
-                src_square.1 += direction.1;
                 match piece {
                     Piece::Queen(_) => continue,
                     Piece::Rook(_) => continue,
@@ -518,9 +519,6 @@ pub fn piece_move(
                 }
             }
             valid_moves.push(r#move);
-
-            src_square.0 += direction.0;
-            src_square.1 += direction.1;
 
             break;
         }

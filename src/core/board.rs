@@ -116,8 +116,8 @@ impl Board {
         // handle castling
         if let Some(ref castle) = r#move.castle {
             match castle {
-                CastleKind::Kingside => self.castle_kingside(self.active_color),
-                CastleKind::Queenside => self.castle_queenside(self.active_color),
+                CastleKind::Kingside => self.castle_kingside(),
+                CastleKind::Queenside => self.castle_queenside(),
             }
         }
 
@@ -165,36 +165,38 @@ impl Board {
     }
 
     /// Returns the pieces of the opposite active color that are attacking the given square.
-    pub(crate) fn square_attackers(&self, src_square: (usize, usize)) -> Vec<Piece> {
+    pub fn square_attackers(&self, src_square: (usize, usize)) -> Vec<Piece> {
         let mut attacking_pieces = Vec::new();
         let color = self.active_color.invert();
 
-        let piece_directions = vec![
-            (Piece::Pawn(color), PAWN_CAPTURE_DIRECTIONS.to_vec()),
-            (Piece::Knight(color), KNIGHT_DIRECTIONS.to_vec()),
-            (Piece::Bishop(color), BISHOP_DIRECTIONS.to_vec()),
-            (Piece::Rook(color), ROOK_DIRECTIONS.to_vec()),
-            (Piece::Queen(color), QUEEN_DIRECTIONS.to_vec()),
-            (Piece::King(color), KING_DIRECTIONS.to_vec()),
+        let pieces = [
+            Piece::Pawn(color),
+            Piece::Knight(color),
+            Piece::Bishop(color),
+            Piece::Rook(color),
+            Piece::Queen(color),
+            Piece::King(color),
         ];
 
-        for (piece, directions) in &piece_directions {
-            for direction in directions {
-                let mut src_square = match piece {
-                    Piece::Pawn(_) => match color {
-                        Color::White => (
-                            src_square.0 as i8 + direction.0,
-                            src_square.1 as i8 + direction.1,
-                        ),
-                        Color::Black => (
-                            src_square.0 as i8 - direction.0,
-                            src_square.1 as i8 + direction.1,
-                        ),
-                    },
+        // starting from the square we are checking, iterate through all the directions
+        // of each piece and check if there are any pieces attacking the square.
+        for piece in pieces.iter() {
+            for direction in piece.directions() {
+                // pawns can only attack diagonally
+                if piece == &Piece::Pawn(color) && direction.1 == 0 {
+                    continue;
+                }
 
+                let mut src_square = match piece {
+                    // since in this method we are going from the square we are checking to the source square,
+                    // we need to invert the direction if the piece is a pawn.
+                    Piece::Pawn(_) => (
+                        src_square.0 as i8 + direction.0 * -1,
+                        src_square.1 as i8 + direction.1,
+                    ),
                     _ => (
-                        (src_square.0 as i8 + direction.0),
-                        (src_square.1 as i8 + direction.1),
+                        src_square.0 as i8 + direction.0,
+                        src_square.1 as i8 + direction.1,
                     ),
                 };
 
@@ -206,10 +208,10 @@ impl Board {
                         break;
                     }
 
-                    if src_square_piece.is_none() {
-                        src_square.0 += direction.0;
-                        src_square.1 += direction.1;
+                    src_square.0 += direction.0;
+                    src_square.1 += direction.1;
 
+                    if src_square_piece.is_none() {
                         match piece {
                             Piece::Queen(_) => continue,
                             Piece::Rook(_) => continue,
@@ -220,9 +222,6 @@ impl Board {
                         }
                     }
 
-                    src_square.0 += direction.0;
-                    src_square.1 += direction.1;
-
                     attacking_pieces.push(*piece);
                 }
             }
@@ -231,10 +230,10 @@ impl Board {
         attacking_pieces
     }
 
-    /// Castles kingside for the given color.
+    /// Castles kingside for the given active color.
     /// This method assumes that the castle is legal.
-    fn castle_kingside(&mut self, color: Color) {
-        let row = match color {
+    fn castle_kingside(&mut self) {
+        let row = match self.active_color {
             Color::White => 7,
             Color::Black => 0,
         };
@@ -245,17 +244,17 @@ impl Board {
         self.set_piece(king_square, None);
         self.set_piece(rook_square, None);
 
-        let king = Piece::King(color);
-        let rook = Piece::Rook(color);
+        let king = Piece::King(self.active_color);
+        let rook = Piece::Rook(self.active_color);
 
         self.set_piece((row, 6), Some(king));
         self.set_piece((row, 5), Some(rook));
     }
 
-    /// Castles queenside for the given color.
+    /// Castles queenside for the current active color.
     /// This method assumes that the castle is legal.
-    fn castle_queenside(&mut self, color: Color) {
-        let row = match color {
+    fn castle_queenside(&mut self) {
+        let row = match self.active_color {
             Color::White => 7,
             Color::Black => 0,
         };
@@ -266,8 +265,8 @@ impl Board {
         self.set_piece(king_square, None);
         self.set_piece(rook_square, None);
 
-        let king = Piece::King(color);
-        let rook = Piece::Rook(color);
+        let king = Piece::King(self.active_color);
+        let rook = Piece::Rook(self.active_color);
 
         self.set_piece((row, 2), Some(king));
         self.set_piece((row, 3), Some(rook));
@@ -289,7 +288,6 @@ impl Board {
 
     /// Updates the castle rights given a move.
     fn update_castle_rights(&mut self, r#move: &Move) {
-        // if the king moves, the player loses the right to castle kingside and queenside
         if r#move.castle.is_some() {
             match self.active_color {
                 Color::White => self.castle_rights.retain(|x| {
