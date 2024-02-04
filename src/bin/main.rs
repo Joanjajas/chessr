@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::fs::read_to_string;
 
-use chessr::board;
+use chessr::Board;
 
 fn main() {
     if let Err(e) = run() {
@@ -20,13 +20,13 @@ fn run() -> Result<()> {
             println!("Enter FEN:");
             let mut fen = String::new();
             std::io::stdin().read_line(&mut fen)?;
-            let board = board::Board::from_fen(&fen)?;
+            let board = Board::from_fen(&fen)?;
 
             play(board)?;
             Ok(())
         }
         "new" => {
-            let board = board::Board::new();
+            let board = Board::new();
             play(board)?;
             Ok(())
         }
@@ -35,7 +35,7 @@ fn run() -> Result<()> {
     }
 }
 
-fn play(mut board: board::Board) -> Result<()> {
+fn play(mut board: Board) -> Result<()> {
     loop {
         println!("====================");
         println!("{}", board.legal_moves().len());
@@ -64,7 +64,7 @@ fn parse_lichess_moves() -> Result<()> {
     let moves = re3.replace_all(&moves, "");
     let moves = moves.split_whitespace().collect::<Vec<_>>();
 
-    let mut board = board::Board::new();
+    let mut board = Board::new();
     let mut sum = 0;
     moves.iter().skip(1).for_each(|w| {
         if sum == 2 {
@@ -74,6 +74,7 @@ fn parse_lichess_moves() -> Result<()> {
         board.make_move_algebraic(w);
         println!("====================");
         println!("{}", board);
+        println!("{}", board.legal_moves().len());
         println!("{}", w);
         println!("{}", board.fen());
         sum += 1;

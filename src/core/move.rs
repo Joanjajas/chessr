@@ -1,13 +1,13 @@
-use crate::board::Board;
-use crate::castle::{CastleKind, CastleRights};
-use crate::color::Color;
 use crate::constants::*;
 use crate::conversion::algebraic_to_coordinates;
-use crate::piece::Piece;
+use crate::core::board::Board;
+use crate::core::castle::{CastleKind, CastleRights};
+use crate::core::color::Color;
+use crate::core::piece::Piece;
 
 use regex::Regex;
 
-/// Struct representing a chess move.
+/// Represents a chess move.
 #[derive(Debug, Clone)]
 pub struct Move {
     /// Source square of the piece moving

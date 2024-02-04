@@ -1,10 +1,6 @@
-pub mod board;
-mod castle;
-mod color;
-mod constants;
+pub mod constants;
 mod conversion;
-mod error;
-mod fen;
-pub mod r#move;
-mod movegen;
-mod piece;
+pub mod core;
+pub mod fen;
+
+pub use core::Board;

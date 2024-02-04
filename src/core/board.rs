@@ -1,11 +1,10 @@
-use crate::castle::{CastleKind, CastleRights};
-use crate::color::Color;
 use crate::constants::*;
-use crate::error::FenParseError;
-use crate::fen;
-use crate::movegen;
-use crate::piece::Piece;
-use crate::r#move::Move;
+use crate::core::castle::{CastleKind, CastleRights};
+use crate::core::color::Color;
+use crate::core::movegen;
+use crate::core::piece::Piece;
+use crate::core::r#move::Move;
+use crate::fen::{self, FenParseError};
 
 /// Represents a chess board.
 #[derive(Debug, Clone)]
@@ -221,12 +220,10 @@ impl Board {
                         }
                     }
 
-                    if src_square_piece.is_some_and(|p| &p == piece) {
-                        src_square.0 += direction.0;
-                        src_square.1 += direction.1;
+                    src_square.0 += direction.0;
+                    src_square.1 += direction.1;
 
-                        attacking_pieces.push(*piece);
-                    }
+                    attacking_pieces.push(*piece);
                 }
             }
         }

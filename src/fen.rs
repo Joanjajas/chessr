@@ -1,9 +1,36 @@
-use crate::board::Board;
-use crate::castle::CastleRights;
-use crate::color::Color;
 use crate::conversion::{algebraic_to_coordinates, coordinates_to_algebraic};
-use crate::error::FenParseError;
-use crate::piece::Piece;
+use crate::core::Board;
+use crate::core::CastleRights;
+use crate::core::Color;
+use crate::core::Piece;
+
+/// Represents errors that can occur when parsing a FEN string.
+#[derive(Debug)]
+pub enum FenParseError {
+    FenString,
+    PiecePositions,
+    ActiveColor,
+    CastleRights,
+    EnPassant,
+    HalfmoveClock,
+    FullmoveNumber,
+}
+
+impl std::error::Error for FenParseError {}
+
+impl std::fmt::Display for FenParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            FenParseError::FenString => write!(f, "Invalid FEN string"),
+            FenParseError::PiecePositions => write!(f, "Invalid piece positions"),
+            FenParseError::ActiveColor => write!(f, "Invalid active color"),
+            FenParseError::CastleRights => write!(f, "Invalid castle rights"),
+            FenParseError::EnPassant => write!(f, "Invalid en passant"),
+            FenParseError::HalfmoveClock => write!(f, "Invalid halfmove clock"),
+            FenParseError::FullmoveNumber => write!(f, "Invalid fullmove number"),
+        }
+    }
+}
 
 /// Creates a new board from the given FEN string
 /// Forsyth–Edwards Notation (FEN) is a standard notation for describing a particular board position of a chess game.

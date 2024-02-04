@@ -1,8 +1,8 @@
-use crate::board::Board;
-use crate::castle::CastleKind;
-use crate::color::Color;
-use crate::piece::Piece;
-use crate::r#move::{self, Move};
+use crate::core::board::Board;
+use crate::core::castle::CastleKind;
+use crate::core::color::Color;
+use crate::core::piece::Piece;
+use crate::core::r#move::{self, Move};
 
 /// Returns a vec of [Move] containing all possible legal moves in the current position.
 pub fn generate_legal_moves(board: &Board) -> Vec<Move> {

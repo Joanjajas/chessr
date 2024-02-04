@@ -1,8 +1,8 @@
-use crate::color::Color;
 use crate::constants::{
     BISHOP_DIRECTIONS, KING_DIRECTIONS, KNIGHT_DIRECTIONS, PAWN_DIRECTIONS, QUEEN_DIRECTIONS,
     ROOK_DIRECTIONS,
 };
+use crate::core::color::Color;
 
 /// Represents a chess piece.
 #[derive(Debug, Copy, Clone, PartialEq)]
