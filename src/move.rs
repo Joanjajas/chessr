@@ -30,7 +30,7 @@ pub struct Move {
 }
 
 impl Move {
-    /// Returns a [Move](crate::r#move::Move) struct representation of the given algebraic notation for the given board.
+    /// Returns a [Move] struct representation of the given algebraic notation for the given board.
     /// If the move is invalid or illega `None` will be returned
     pub fn from_algebraic(r#move: &str, board: &Board) -> Option<Move> {
         // castling

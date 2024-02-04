@@ -5,7 +5,7 @@ use crate::error::FenParseError;
 use crate::fen;
 use crate::movegen;
 use crate::piece::Piece;
-use crate::r#move::{self, Move};
+use crate::r#move::Move;
 
 /// Represents a chess board.
 #[derive(Debug, Clone)]
@@ -35,42 +35,40 @@ impl Board {
         fen::fen_to_board(FEN_STARTING_POSITION).unwrap()
     }
 
-    /// Creates a new board from a FEN string.
-    /// Forsyth–Edwards Notation (FEN) is a standard notation for describing a particular board position of a chess game.
-    /// [Chess.com](https://www.chess.com/terms/fen-chess)
+    /// Creates a FEN string representation of the current the board.
+    /// [Forsyth–Edwards Notation](https://www.chess.com/terms/fen-chess) (FEN) is a standard notation for describing a particular board position of a chess game.
     pub fn from_fen(fen_str: &str) -> Result<Board, FenParseError> {
         fen::fen_to_board(fen_str)
     }
 
     /// Creates a FEN string representation of the current the board.
-    /// Forsyth–Edwards Notation (FEN) is a standard notation for describing a particular board position of a chess game.
-    /// [Chess.com](https://www.chess.com/terms/fen-chess)
+    /// [Forsyth–Edwards Notation](https://www.chess.com/terms/fen-chess) (FEN) is a standard notation for describing a particular board position of a chess game.
     pub fn fen(&self) -> String {
         fen::board_to_fen(self)
     }
 
-    /// Returns if there is a check in the current position.
+    /// Returns true if there is a check in the current position.
     pub fn check(&self) -> bool {
         self.square_attackers(self.king_square(), self.active_color.invert())
             .is_some()
     }
 
-    /// Returns if there is a checkmate in the current position.
+    /// Returns true if there is a checkmate in the current position.
     pub fn checkmate(&self) -> bool {
         self.check() && self.legal_moves().is_empty()
     }
 
-    /// Returns if there is a stalemate in the current position.
+    /// Returns true if there is a stalemate in the current position.
     pub fn stalemate(&self) -> bool {
         !self.check() && self.legal_moves().is_empty()
     }
 
-    /// Returns if 50 moves have been made without a pawn move or a capture.
+    /// Returns true if 50 moves have been made without a pawn move or a capture.
     pub fn fifty_move_rule(&self) -> bool {
         self.halfmove_clock >= 100
     }
 
-    /// Makes a move on the board given its algebraic notation. [Chesscom](https://www.chess.com/terms/chess-notation)
+    /// Makes a move on the board given its [algebraic notation](https://www.chess.com/terms/chess-notation).
     /// If the move notation is invalid or the move is not legal, nothing will happen.
     /// Also returns the move that was made.
     pub fn make_move_algebraic(&mut self, algebraic: &str) -> Option<Move> {
@@ -83,41 +81,9 @@ impl Board {
         r#move
     }
 
-    /// Returns a list of all possible legal moves in the current position.
+    /// Returns a vec of [Move] containing all possible legal moves in the current position.
     pub fn legal_moves(&self) -> Vec<Move> {
-        let mut legal_moves = Vec::new();
-
-        // piece moves
-        for (row, col) in self.pieces.iter().enumerate() {
-            for (col, piece) in col.iter().enumerate() {
-                if piece.is_some_and(|p| p.color() != &self.active_color) || piece.is_none() {
-                    continue;
-                }
-
-                match piece.unwrap() {
-                    Piece::Pawn(_) => {
-                        legal_moves.append(&mut movegen::pawn_legal_moves((row, col), self))
-                    }
-                    _ => legal_moves.append(&mut movegen::piece_legal_moves(
-                        &piece.unwrap(),
-                        (row, col),
-                        self,
-                    )),
-                }
-            }
-        }
-
-        // kingside castling
-        if let Some(castle) = r#move::castle(CastleKind::Kingside, self) {
-            legal_moves.push(castle);
-        }
-
-        // queenside castling
-        if let Some(castle) = r#move::castle(CastleKind::Queenside, self) {
-            legal_moves.push(castle);
-        }
-
-        legal_moves
+        movegen::generate_legal_moves(self)
     }
 
     /// Returns the piece located at the given square, if any.
@@ -183,8 +149,9 @@ impl Board {
                 self.set_piece(dst_square, Some(promotion_piece));
             } else {
                 self.set_piece(dst_square, src_square_piece);
-                self.set_piece(src_square, None);
             }
+
+            self.set_piece(src_square, None);
         }
 
         self.active_color = self.active_color.invert();

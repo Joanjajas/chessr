@@ -38,6 +38,7 @@ fn run() -> Result<()> {
 fn play(mut board: board::Board) -> Result<()> {
     loop {
         println!("====================");
+        println!("{}", board.legal_moves().len());
         println!("{}", board);
         let mut r#move = String::new();
         std::io::stdin().read_line(&mut r#move)?;

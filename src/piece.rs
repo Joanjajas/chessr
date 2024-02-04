@@ -1,4 +1,8 @@
 use crate::color::Color;
+use crate::constants::{
+    BISHOP_DIRECTIONS, KING_DIRECTIONS, KNIGHT_DIRECTIONS, PAWN_DIRECTIONS, QUEEN_DIRECTIONS,
+    ROOK_DIRECTIONS,
+};
 
 /// Represents a chess piece.
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -21,6 +25,19 @@ impl Piece {
             Piece::Rook(color) => color,
             Piece::Queen(color) => color,
             Piece::King(color) => color,
+        }
+    }
+
+    /// Returns the directions the piece can move in.
+    pub fn directions(&self) -> Vec<(i8, i8)> {
+        match self {
+            Piece::Pawn(Color::Black) => PAWN_DIRECTIONS.to_vec(),
+            Piece::Pawn(Color::White) => PAWN_DIRECTIONS.iter().map(|(x, y)| (-x, -y)).collect(),
+            Piece::Knight(_) => KNIGHT_DIRECTIONS.to_vec(),
+            Piece::Bishop(_) => BISHOP_DIRECTIONS.to_vec(),
+            Piece::Rook(_) => ROOK_DIRECTIONS.to_vec(),
+            Piece::Queen(_) => QUEEN_DIRECTIONS.to_vec(),
+            Piece::King(_) => KING_DIRECTIONS.to_vec(),
         }
     }
 

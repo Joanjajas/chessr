@@ -5,6 +5,6 @@ mod constants;
 mod conversion;
 mod error;
 mod fen;
-mod r#move;
+pub mod r#move;
 mod movegen;
 mod piece;
