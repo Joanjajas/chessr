@@ -88,7 +88,7 @@ impl Board {
     /// Returns the piece located at the given square, if any.
     /// If the square provided is out of bounds, the method will panic.
     pub(crate) fn get_piece(&self, square: (usize, usize)) -> Option<Piece> {
-        return self.pieces[square.0][square.1];
+        self.pieces[square.0][square.1]
     }
 
     /// Sets the piece at the given square.
