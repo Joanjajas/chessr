@@ -302,11 +302,10 @@ pub fn piece_move(
 
     let mut valid_moves = vec![];
     for direction in piece.directions().iter() {
-        let mut src_square: Square = (
+        let mut src_square = Square(
             (dst_square.0 as i8 + direction.0) as usize,
             (dst_square.1 as i8 + direction.1) as usize,
-        )
-            .into();
+        );
 
         // starting from the dst_square square, travel all the way in all possible directions
         // until we find the piece matching the one we are moving
@@ -387,11 +386,10 @@ pub fn pawn_move(dst_square: Square, board: &Board) -> Option<Move> {
     let dst_square_piece = board.get_piece(dst_square);
 
     for direction in piece.directions() {
-        let src_square: Square = (
+        let src_square = Square(
             (dst_square.0 as i8 - direction.0) as usize,
             (dst_square.1 as i8 - direction.1) as usize,
-        )
-            .into();
+        );
 
         // if the destination square is out of bounds, skip and continue with the next direction
         if !(0..=7).contains(&src_square.0) || !(0..=7).contains(&src_square.1) {

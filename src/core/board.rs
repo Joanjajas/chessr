@@ -65,8 +65,8 @@ impl Board {
     /// Makes a move on the board given its [algebraic notation](https://www.chess.com/terms/chess-notation).
     /// If the move notation is invalid or the move is not legal, nothing will happen.
     /// Also returns the move that was made.
-    pub fn make_move_algebraic(&mut self, algebraic: &str) -> Option<Move> {
-        let r#move = Move::from_algebraic(algebraic, self);
+    pub fn make_move_algebraic(&mut self, algebraic_move: &str) -> Option<Move> {
+        let r#move = Move::from_algebraic(algebraic_move, self);
 
         if let Some(ref r#move) = r#move {
             self.make_move(r#move);
@@ -184,19 +184,17 @@ impl Board {
                     continue;
                 }
 
-                let mut src_square: Square = match piece {
+                let mut src_square = match piece {
                     // since in this method we are going from the square we are checking to the source square,
                     // we need to invert the direction if the piece is a pawn.
-                    Piece::Pawn(_) => (
+                    Piece::Pawn(_) => Square(
                         (src_square.0 as i8 - direction.0) as usize,
                         (src_square.1 as i8 + direction.1) as usize,
-                    )
-                        .into(),
-                    _ => (
+                    ),
+                    _ => Square(
                         (src_square.0 as i8 + direction.0) as usize,
                         (src_square.1 as i8 + direction.1) as usize,
-                    )
-                        .into(),
+                    ),
                 };
 
                 while (0..=7).contains(&src_square.0) && (0..=7).contains(&src_square.1) {
