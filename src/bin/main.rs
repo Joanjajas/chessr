@@ -38,7 +38,6 @@ fn run() -> Result<()> {
 fn play(mut board: Board) -> Result<()> {
     loop {
         println!("====================");
-        println!("{}", board.legal_moves().len());
         println!("{}", board);
         let mut r#move = String::new();
         std::io::stdin().read_line(&mut r#move)?;
@@ -46,6 +45,8 @@ fn play(mut board: Board) -> Result<()> {
         println!("{}", board.fen());
 
         if board.checkmate() {
+            println!("====================");
+            println!("{}", board);
             println!("Checkmate!");
             break;
         }

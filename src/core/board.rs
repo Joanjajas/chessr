@@ -1,9 +1,5 @@
-use crate::constants::*;
-use crate::core::castle::{CastleKind, CastleRights};
-use crate::core::color::Color;
-use crate::core::movegen;
-use crate::core::piece::Piece;
-use crate::core::r#move::Move;
+use crate::constants::FEN_STARTING_POSITION;
+use crate::core::{movegen, CastleKind, CastleRights, Color, Move, Piece, Square};
 use crate::fen::{self, FenParseError};
 
 /// Represents a chess board.
@@ -19,7 +15,7 @@ pub struct Board {
     pub castle_rights: Vec<CastleRights>,
 
     /// En passant target square.
-    pub en_passant: Option<(usize, usize)>,
+    pub en_passant: Option<Square>,
 
     /// Number of moves since the last capture or pawn advance.
     pub halfmove_clock: u32,
@@ -34,7 +30,7 @@ impl Board {
         fen::fen_to_board(FEN_STARTING_POSITION).unwrap()
     }
 
-    /// Creates a FEN string representation of the current the board.
+    /// Creates a FEN string representation of the current board.
     /// [Forsyth–Edwards Notation](https://www.chess.com/terms/fen-chess) (FEN) is a standard notation for describing a particular board position of a chess game.
     pub fn from_fen(fen_str: &str) -> Result<Board, FenParseError> {
         fen::fen_to_board(fen_str)
@@ -86,14 +82,14 @@ impl Board {
 
     /// Returns the piece located at the given square, if any.
     /// If the square provided is out of bounds, the method will panic.
-    pub(crate) fn get_piece(&self, square: (usize, usize)) -> Option<Piece> {
+    pub(crate) fn get_piece(&self, square: Square) -> Option<Piece> {
         self.pieces[square.0][square.1]
     }
 
     /// Sets the piece at the given square.
     /// To remove a piece from a square, pass `None` as the piece.
     /// If the square provided is out of bounds, the method will panic.
-    pub(crate) fn set_piece(&mut self, square: (usize, usize), piece: Option<Piece>) {
+    pub(crate) fn set_piece(&mut self, square: Square, piece: Option<Piece>) {
         self.pieces[square.0][square.1] = piece;
     }
 
@@ -106,8 +102,8 @@ impl Board {
 
             // calculate the square in which the en passant target is located
             let en_passant_capture_square = match self.active_color {
-                Color::White => (en_passant_square.0 + 1, en_passant_square.1),
-                Color::Black => (en_passant_square.0 - 1, en_passant_square.1),
+                Color::White => (en_passant_square.0 + 1, en_passant_square.1).into(),
+                Color::Black => (en_passant_square.0 - 1, en_passant_square.1).into(),
             };
 
             self.set_piece(en_passant_capture_square, None);
@@ -156,7 +152,8 @@ impl Board {
         };
     }
 
-    /// Returns if a given move will leave the king in check
+    /// Returns if a given move will leave the king in check.
+    /// The move passed to this method should be legal and valid, otherwise undefined behavior may occur.
     pub(crate) fn future_check(&self, r#move: &Move) -> bool {
         let mut cloned_board = self.clone();
         cloned_board.make_move(r#move);
@@ -165,7 +162,7 @@ impl Board {
     }
 
     /// Returns the pieces of the opposite active color that are attacking the given square.
-    pub fn square_attackers(&self, src_square: (usize, usize)) -> Vec<Piece> {
+    pub fn square_attackers(&self, src_square: Square) -> Vec<Piece> {
         let mut attacking_pieces = Vec::new();
         let color = self.active_color.invert();
 
@@ -187,29 +184,28 @@ impl Board {
                     continue;
                 }
 
-                let mut src_square = match piece {
+                let mut src_square: Square = match piece {
                     // since in this method we are going from the square we are checking to the source square,
                     // we need to invert the direction if the piece is a pawn.
                     Piece::Pawn(_) => (
-                        src_square.0 as i8 + direction.0 * -1,
-                        src_square.1 as i8 + direction.1,
-                    ),
+                        (src_square.0 as i8 - direction.0) as usize,
+                        (src_square.1 as i8 + direction.1) as usize,
+                    )
+                        .into(),
                     _ => (
-                        src_square.0 as i8 + direction.0,
-                        src_square.1 as i8 + direction.1,
-                    ),
+                        (src_square.0 as i8 + direction.0) as usize,
+                        (src_square.1 as i8 + direction.1) as usize,
+                    )
+                        .into(),
                 };
 
                 while (0..=7).contains(&src_square.0) && (0..=7).contains(&src_square.1) {
-                    let src_square_piece =
-                        self.get_piece((src_square.0 as usize, src_square.1 as usize));
-
+                    let src_square_piece = self.get_piece(src_square);
                     if src_square_piece.is_some_and(|p| &p != piece) {
                         break;
                     }
 
-                    src_square.0 += direction.0;
-                    src_square.1 += direction.1;
+                    src_square += direction;
 
                     if src_square_piece.is_none() {
                         match piece {
@@ -238,17 +234,17 @@ impl Board {
             Color::Black => 0,
         };
 
-        let king_square = (row, 4);
-        let rook_square = (row, 7);
+        let king_square = (row, 4).into();
+        let rook_square = (row, 7).into();
 
         self.set_piece(king_square, None);
         self.set_piece(rook_square, None);
 
-        let king = Piece::King(self.active_color);
-        let rook = Piece::Rook(self.active_color);
+        let new_king_square = (row, 6).into();
+        let new_rook_square = (row, 5).into();
 
-        self.set_piece((row, 6), Some(king));
-        self.set_piece((row, 5), Some(rook));
+        self.set_piece(new_king_square, Some(Piece::King(self.active_color)));
+        self.set_piece(new_rook_square, Some(Piece::Rook(self.active_color)));
     }
 
     /// Castles queenside for the current active color.
@@ -259,35 +255,35 @@ impl Board {
             Color::Black => 0,
         };
 
-        let king_square = (row, 4);
-        let rook_square = (row, 0);
+        let king_square = (row, 4).into();
+        let rook_square = (row, 0).into();
 
         self.set_piece(king_square, None);
         self.set_piece(rook_square, None);
 
-        let king = Piece::King(self.active_color);
-        let rook = Piece::Rook(self.active_color);
+        let new_king_square = (row, 2).into();
+        let new_rook_square = (row, 3).into();
 
-        self.set_piece((row, 2), Some(king));
-        self.set_piece((row, 3), Some(rook));
+        self.set_piece(new_king_square, Some(Piece::King(self.active_color)));
+        self.set_piece(new_rook_square, Some(Piece::Rook(self.active_color)));
     }
 
-    /// Returns the square of the king of the current active color.
-    fn king_square(&self) -> (usize, usize) {
+    /// Returns the square of the current active color king.
+    fn king_square(&self) -> Square {
         for (row, col) in self.pieces.iter().enumerate() {
             for (col, piece) in col.iter().enumerate() {
                 if piece == &Some(Piece::King(self.active_color)) {
-                    return (row, col);
+                    return Square(row, col);
                 }
             }
         }
 
-        // king can't be missing from the battle!
-        unreachable!()
+        unreachable!("King can't be missing from the battle!")
     }
 
     /// Updates the castle rights given a move.
     fn update_castle_rights(&mut self, r#move: &Move) {
+        // if the move is a castle, remove all castle rights for the current active color
         if r#move.castle.is_some() {
             match self.active_color {
                 Color::White => self.castle_rights.retain(|x| {
@@ -299,6 +295,8 @@ impl Board {
             }
         }
 
+        // if the move is a king move, remove all castle rights for the current active color or
+        // if the move is a rook move, remove the corresponding castle rights for the current active color
         if let Some(src_square) = r#move.src_square {
             let src_square_piece = self.get_piece(src_square);
 

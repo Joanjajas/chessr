@@ -1,8 +1,4 @@
-use crate::core::board::Board;
-use crate::core::castle::CastleKind;
-use crate::core::color::Color;
-use crate::core::piece::Piece;
-use crate::core::r#move::{self, Move};
+use crate::core::{r#move, Board, CastleKind, Color, Move, Piece, Square};
 
 /// Returns a vec of [Move] containing all possible legal moves in the current position.
 pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
@@ -15,7 +11,7 @@ pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
                 continue;
             }
 
-            let mut legal_moves = legal_moves(&piece.unwrap(), (row, col), board);
+            let mut legal_moves = legal_moves(&piece.unwrap(), (row, col).into(), board);
             moves.append(&mut legal_moves);
         }
     }
@@ -34,7 +30,7 @@ pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
 }
 
 /// Returns a vec of [Move] containing all possible legal moves for the given piece in the current position.
-fn legal_moves(piece: &Piece, src_square: (usize, usize), board: &Board) -> Vec<Move> {
+fn legal_moves(piece: &Piece, src_square: Square, board: &Board) -> Vec<Move> {
     let mut legal_moves = Vec::new();
 
     // handle pawn moves separately
@@ -43,13 +39,14 @@ fn legal_moves(piece: &Piece, src_square: (usize, usize), board: &Board) -> Vec<
     }
 
     for direction in piece.directions().iter() {
-        let mut dst_square = (
-            src_square.0 as i8 + direction.0,
-            src_square.1 as i8 + direction.1,
-        );
+        let mut dst_square: Square = (
+            (src_square.0 as i8 + direction.0) as usize,
+            (src_square.1 as i8 + direction.1) as usize,
+        )
+            .into();
 
         while (0..=7).contains(&dst_square.0) && (0..=7).contains(&dst_square.1) {
-            let dst_square_piece = board.get_piece((dst_square.0 as usize, dst_square.1 as usize));
+            let dst_square_piece = board.get_piece(dst_square);
 
             // if the piece is the same color, we can't move there or beyond
             if dst_square_piece.is_some_and(|p| p.color() == &board.active_color) {
@@ -58,7 +55,7 @@ fn legal_moves(piece: &Piece, src_square: (usize, usize), board: &Board) -> Vec<
 
             let r#move = Move {
                 src_square: Some(src_square),
-                dst_square: Some((dst_square.0 as usize, dst_square.1 as usize)),
+                dst_square: Some(dst_square),
                 promotion: None,
                 en_passant: None,
                 en_passant_capture: false,
@@ -79,8 +76,7 @@ fn legal_moves(piece: &Piece, src_square: (usize, usize), board: &Board) -> Vec<
                 legal_moves.push(r#move);
             }
 
-            dst_square.0 += direction.0;
-            dst_square.1 += direction.1;
+            dst_square += direction;
 
             match piece {
                 Piece::Queen(_) => continue,
@@ -97,17 +93,18 @@ fn legal_moves(piece: &Piece, src_square: (usize, usize), board: &Board) -> Vec<
 }
 
 /// Returns a vec of [Move] containing all possible legal moves for the ginve pawn in the current position.
-fn pawn_legal_moves(src_square: (usize, usize), board: &Board) -> Vec<Move> {
+fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
     let mut legal_moves = Vec::new();
     let piece = Piece::Pawn(board.active_color);
 
     // we have 3 different kind of moves: forward, two square and capture.
     // depending on the color of the pawn the direction is positive or negative.
     for direction in piece.directions().iter() {
-        let dst_square = (
+        let dst_square: Square = (
             (src_square.0 as i8 + direction.0) as usize,
             (src_square.1 as i8 + direction.1) as usize,
-        );
+        )
+            .into();
 
         // if the destination square is out of bounds, skip and continue with the next direction
         if !(0..=7).contains(&dst_square.0) || !(0..=7).contains(&dst_square.1) {
@@ -122,8 +119,12 @@ fn pawn_legal_moves(src_square: (usize, usize), board: &Board) -> Vec<Move> {
         // check if is a two square move and is valid
         let invalid_two_square_move_row = src_square.0 != 6 && src_square.0 != 1;
         let piece_blocking_two_square_move = match board.active_color {
-            Color::Black => board.get_piece((dst_square.0 - 1, dst_square.1)).is_some(),
-            Color::White => board.get_piece((dst_square.0 + 1, dst_square.1)).is_some(),
+            Color::Black => board
+                .get_piece((dst_square.0 - 1, dst_square.1).into())
+                .is_some(),
+            Color::White => board
+                .get_piece((dst_square.0 + 1, dst_square.1).into())
+                .is_some(),
         };
         let invalid_two_square_move = (direction.0 == 2 || direction.0 == -2)
             && (invalid_two_square_move_row
@@ -199,32 +200,32 @@ mod test {
         let mut board =
             Board::from_fen("rnb1kbnr/ppp1pppp/4q3/3p4/P3P3/8/1PPP1PPP/RNBQKBNR w KQkq - 1 4")
                 .unwrap();
-        assert_eq!(pawn_legal_moves((4, 4), &board).len(), 1);
+        assert_eq!(pawn_legal_moves((4, 4).into(), &board).len(), 1);
 
         // diagonal pinned pawn
         board = Board::from_fen("rnb1kbnr/ppp1pppp/8/q2p4/4P3/8/1PPP1PPP/RNBQKBNR w KQkq - 0 5")
             .unwrap();
-        assert_eq!(pawn_legal_moves((6, 3), &board).len(), 0);
+        assert_eq!(pawn_legal_moves((6, 3).into(), &board).len(), 0);
 
         // en passant
         board = Board::from_fen("rnbqkbnr/1pp1pppp/p7/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3")
             .unwrap();
-        assert_eq!(pawn_legal_moves((3, 4), &board).len(), 2);
+        assert_eq!(pawn_legal_moves((3, 4).into(), &board).len(), 2);
 
         // blocking pawn (one square move)
         board =
             Board::from_fen("rnbqkbnr/1ppppppp/8/p7/P7/8/1PPPPPPP/RNBQKBNR w KQkq - 0 2").unwrap();
-        assert_eq!(pawn_legal_moves((4, 0), &board).len(), 0);
+        assert_eq!(pawn_legal_moves((4, 0).into(), &board).len(), 0);
 
         // blocking pawn (two square move)
         board =
             Board::from_fen("rnbqkbnr/1ppppppp/p7/8/P7/8/1PPPPPPP/RNBQKBNR w KQkq - 0 2").unwrap();
-        assert_eq!(pawn_legal_moves((4, 0), &board).len(), 1);
+        assert_eq!(pawn_legal_moves((4, 0).into(), &board).len(), 1);
 
         // capture
         board = Board::from_fen("rn2kbnr/pppqp1pp/8/3p1p2/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 5")
             .unwrap();
-        assert_eq!(pawn_legal_moves((4, 4), &board).len(), 3);
+        assert_eq!(pawn_legal_moves((4, 4).into(), &board).len(), 3);
     }
 
     #[test]
@@ -232,14 +233,14 @@ mod test {
         // king can't move
         let mut board = Board::from_fen("R7/2p5/8/2k3p1/1r6/K1P5/PP6/8 w - - 6 43").unwrap();
         assert_eq!(
-            legal_moves(&Piece::King(Color::White), (5, 0), &board).len(),
+            legal_moves(&Piece::King(Color::White), (5, 0).into(), &board).len(),
             0
         );
 
         // king under check
         board = Board::from_fen("5R2/2p5/8/2k3p1/r7/K1P5/PP6/8 w - - 8 44").unwrap();
         assert_eq!(
-            legal_moves(&Piece::King(Color::White), (5, 0), &board).len(),
+            legal_moves(&Piece::King(Color::White), (5, 0).into(), &board).len(),
             2
         );
 
@@ -247,7 +248,7 @@ mod test {
         board = Board::from_fen("rnbqk1nr/1pppbppp/p7/8/4QB2/P7/1PP1PPPP/RN2KBNR b KQkq - 3 5")
             .unwrap();
         assert_eq!(
-            legal_moves(&Piece::Bishop(Color::Black), (1, 4), &board).len(),
+            legal_moves(&Piece::Bishop(Color::Black), (1, 4).into(), &board).len(),
             0
         );
     }

@@ -1,8 +1,4 @@
-use crate::conversion::{algebraic_to_coordinates, coordinates_to_algebraic};
-use crate::core::Board;
-use crate::core::CastleRights;
-use crate::core::Color;
-use crate::core::Piece;
+use crate::core::{Board, CastleRights, Color, Piece, Square};
 
 /// Represents errors that can occur when parsing a FEN string.
 #[derive(Debug)]
@@ -32,7 +28,7 @@ impl std::fmt::Display for FenParseError {
     }
 }
 
-/// Creates a new board from the given FEN string
+/// Creates a new board from the given FEN string.
 /// [Forsyth–Edwards Notation](https://www.chess.com/terms/fen-chess) (FEN) is a standard notation for describing a particular board position of a chess game.
 pub fn fen_to_board(fen_string: &str) -> Result<Board, FenParseError> {
     let mut pieces = [[None; 8]; 8];
@@ -94,7 +90,7 @@ pub fn fen_to_board(fen_string: &str) -> Result<Board, FenParseError> {
 
     let en_passant = match *fen_blocks.get(3).ok_or(FenParseError::FenString)? {
         "-" => None,
-        s => Some(algebraic_to_coordinates(s).ok_or(FenParseError::EnPassant)?),
+        s => Some(Square::from_algebraic(s).ok_or(FenParseError::EnPassant)?),
     };
 
     // optional fields
@@ -120,7 +116,7 @@ pub fn fen_to_board(fen_string: &str) -> Result<Board, FenParseError> {
     })
 }
 
-/// Converts a given board to a FEN string
+/// Converts a given board to a FEN string.
 /// [Forsyth–Edwards Notation](https://www.chess.com/terms/fen-chess) (FEN) is a standard notation for describing a particular board position of a chess game.
 pub fn board_to_fen(board: &Board) -> String {
     let mut fen = String::new();
@@ -170,8 +166,8 @@ pub fn board_to_fen(board: &Board) -> String {
 
     // en passant
     match board.en_passant {
-        Some((row, column)) => {
-            let algebraic = coordinates_to_algebraic((row, column)).unwrap_or("-".to_string());
+        Some(square) => {
+            let algebraic = (square.algebraic()).unwrap_or("-".to_string());
             fen.push_str(&algebraic);
         }
         None => fen.push('-'),
