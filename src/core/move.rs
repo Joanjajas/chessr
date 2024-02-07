@@ -42,7 +42,13 @@ impl Move {
 
         if re.is_match(r#move) {
             let dst_square = Square::from_algebraic(r#move)?;
-            return pawn_move(dst_square, board);
+            return piece_move(
+                Piece::Pawn(board.active_color),
+                dst_square,
+                None,
+                None,
+                board,
+            );
         }
 
         // piece move
@@ -55,7 +61,7 @@ impl Move {
             return piece_move(piece, dst_square, None, None, board);
         }
 
-        // piece disambiguation (row)
+        // piece move row disambiguation
         let re = Regex::new(PIECE_MOVE_ROW_DISAMBIGUATION_REGEX)
             .expect("Invalid piece move row disambiguation regex");
 
@@ -68,7 +74,7 @@ impl Move {
             return piece_move(piece, dst_square, Some(disambiguation_row), None, board);
         }
 
-        // piece disambiguation (column)
+        // piece move column disambiguation
         let re = Regex::new(PIECE_MOVE_COLUMN_DISAMBIGUATION_REGEX)
             .expect("Invalid piece move column disambiguation regex");
 
@@ -81,7 +87,7 @@ impl Move {
             return piece_move(piece, dst_square, None, Some(disambiguation_column), board);
         }
 
-        // piece disambiguation (row and column)
+        // piece move row and column disambiguation
         let re = Regex::new(PIECE_MOVE_ROW_AND_COLUMN_DISAMBIGUATION_REGEX)
             .expect("Invalid piece move row and column disambiguation regex");
 
@@ -127,7 +133,7 @@ impl Move {
             return piece_move(piece, dst_square, None, None, board);
         }
 
-        // piece capture (row disambiguation)
+        // piece capture row disambiguation
         let re = Regex::new(PIECE_CAPTURE_ROW_DISAMBIGUATION_REGEX)
             .expect("Invalid piece capture row disambiguation regex");
 
@@ -140,7 +146,7 @@ impl Move {
             return piece_move(piece, dst_square, Some(disambiguation_row), None, board);
         }
 
-        // piece capture (column disambiguation)
+        // piece capture column disambiguation
         let re = Regex::new(PIECE_CAPTURE_COLUMN_DISAMBIGUATION_REGEX)
             .expect("Invalid piece capture column disambiguation regex");
 
@@ -153,7 +159,7 @@ impl Move {
             return piece_move(piece, dst_square, None, Some(disambiguation_column), board);
         }
 
-        // piece capture (row and column disambiguation)
+        // piece capture row and column disambiguation
         let re = Regex::new(PIECE_CAPTURE_ROW_AND_COLUMN_DISAMBIGUATION_REGEX)
             .expect("Invalid piece capture row and column disambiguation regex");
 
@@ -180,7 +186,14 @@ impl Move {
             let promotion_piece =
                 Piece::from_algebraic_char(r#move.chars().nth(3)?, board.active_color)?;
 
-            let mut r#move = pawn_move(dst_square, board);
+            let mut r#move = piece_move(
+                Piece::Pawn(board.active_color),
+                dst_square,
+                None,
+                None,
+                board,
+            );
+
             if let Some(ref mut r#move) = r#move {
                 r#move.promotion = Some(promotion_piece);
             }
@@ -205,6 +218,7 @@ impl Move {
                 Some(disambiguation),
                 board,
             );
+
             if let Some(ref mut r#move) = r#move {
                 r#move.promotion = Some(promotion_piece);
             }
@@ -212,7 +226,6 @@ impl Move {
             return r#move;
         }
 
-        println!("Invalid move notation: {}", r#move);
         None
     }
 }
@@ -297,7 +310,7 @@ pub fn piece_move(
 
     // handle pawn moves separately
     if let Piece::Pawn(_) = piece {
-        return pawn_move(dst_square, board);
+        return pawn_move(dst_square, board, disambiguation_column);
     }
 
     let mut valid_moves = vec![];
@@ -333,11 +346,8 @@ pub fn piece_move(
                 }
             }
 
-            // if the piece we are moving is not in the square we are looking
-            // in, then go to the next square in the same direction if the
-            // moving piece is not a queen, rook or bishop, or search in the
-            // next direction if it is a queen, rook or bishop (queen, rook and
-            // bishop can move multiple squares)
+            // if the source square is empty, depending on the piece type we can continue
+            // looking in the same direction or skip to the next direction
             if src_square_piece.is_none() {
                 src_square += direction;
 
@@ -381,7 +391,11 @@ pub fn piece_move(
     }
 }
 
-pub fn pawn_move(dst_square: Square, board: &Board) -> Option<Move> {
+pub fn pawn_move(
+    dst_square: Square,
+    board: &Board,
+    disambiguation_column: Option<usize>,
+) -> Option<Move> {
     let piece = Piece::Pawn(board.active_color);
     let dst_square_piece = board.get_piece(dst_square);
 
@@ -397,6 +411,8 @@ pub fn pawn_move(dst_square: Square, board: &Board) -> Option<Move> {
         }
 
         let src_square_piece = board.get_piece(src_square);
+
+        // if the source square is empty, or it is not the piece we are moving, skip and continue with the next direction
         if src_square_piece.is_some_and(|p| p != piece) || src_square_piece.is_none() {
             continue;
         }
@@ -426,8 +442,16 @@ pub fn pawn_move(dst_square: Square, board: &Board) -> Option<Move> {
             && (dst_square_piece.is_none() && invalid_en_passant)
             || dst_square_piece.is_some_and(|p| p.color() == &board.active_color);
 
+        // if one of the conditions is met, skip and continue with the next direction
         if invalid_forward_move || invalid_two_square_move || invalid_capture {
             continue;
+        }
+
+        // check for column disambiguation
+        if let Some(column) = disambiguation_column {
+            if column != src_square.1 as usize {
+                continue;
+            }
         }
 
         // check for en passant

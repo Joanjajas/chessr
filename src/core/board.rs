@@ -234,13 +234,11 @@ impl Board {
 
         let king_square = (row, 4).into();
         let rook_square = (row, 7).into();
-
-        self.set_piece(king_square, None);
-        self.set_piece(rook_square, None);
-
         let new_king_square = (row, 6).into();
         let new_rook_square = (row, 5).into();
 
+        self.set_piece(king_square, None);
+        self.set_piece(rook_square, None);
         self.set_piece(new_king_square, Some(Piece::King(self.active_color)));
         self.set_piece(new_rook_square, Some(Piece::Rook(self.active_color)));
     }
@@ -255,13 +253,11 @@ impl Board {
 
         let king_square = (row, 4).into();
         let rook_square = (row, 0).into();
-
-        self.set_piece(king_square, None);
-        self.set_piece(rook_square, None);
-
         let new_king_square = (row, 2).into();
         let new_rook_square = (row, 3).into();
 
+        self.set_piece(king_square, None);
+        self.set_piece(rook_square, None);
         self.set_piece(new_king_square, Some(Piece::King(self.active_color)));
         self.set_piece(new_rook_square, Some(Piece::Rook(self.active_color)));
     }
