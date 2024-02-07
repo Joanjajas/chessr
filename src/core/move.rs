@@ -268,7 +268,7 @@ pub fn piece_move(
 
             // check for row disambiguation
             if let Some(row) = disambiguation_row {
-                if row != src_square.0 as usize {
+                if row != src_square.0 {
                     src_square += direction;
                     continue;
                 }
@@ -276,7 +276,7 @@ pub fn piece_move(
 
             // check for column disambiguation
             if let Some(column) = disambiguation_column {
-                if column != src_square.1 as usize {
+                if column != src_square.1 {
                     src_square += direction;
                     continue;
                 }
@@ -354,7 +354,7 @@ pub fn pawn_move(
 
         // check for column disambiguation
         if let Some(column) = disambiguation_column {
-            if column != src_square.1 as usize {
+            if column != src_square.1 {
                 continue;
             }
         }

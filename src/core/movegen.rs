@@ -194,6 +194,7 @@ fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
     legal_moves
 }
 
+/// Returns a vec of [Move] containing all possible castle legal moves for the current position.
 pub fn castle_legal_moves(board: &Board) -> Vec<Move> {
     let mut legal_moves = Vec::new();
 
