@@ -1,4 +1,4 @@
-use crate::core::{r#move, Board, CastleKind, Color, Move, Piece, Square};
+use crate::core::{Board, CastleKind, CastleRights, Color, Move, Piece, Square};
 
 /// Returns a vec of [Move] containing all possible legal moves in the current position.
 pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
@@ -17,15 +17,9 @@ pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
         }
     }
 
-    // kingside castling
-    if let Some(castle) = r#move::castle(CastleKind::Kingside, board) {
-        legal_moves.push(castle);
-    }
-
-    // queenside castling
-    if let Some(castle) = r#move::castle(CastleKind::Queenside, board) {
-        legal_moves.push(castle);
-    }
+    // castle moves
+    let mut legal_castle_moves = castle_legal_moves(board);
+    legal_moves.append(&mut legal_castle_moves);
 
     legal_moves
 }
@@ -172,12 +166,22 @@ fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
             continue;
         }
 
+        let en_passant_capture = board.en_passant.is_some_and(|s| s == dst_square);
+        let en_passant = if direction.0 == 2 {
+            match board.active_color {
+                Color::Black => Some((dst_square.0 - 1, dst_square.1).into()),
+                Color::White => Some((dst_square.0 + 1, dst_square.1).into()),
+            }
+        } else {
+            None
+        };
+
         let r#move = Move {
             src_square: Some(src_square),
             dst_square: Some(dst_square),
             promotion: None,
-            en_passant: None,
-            en_passant_capture: false,
+            en_passant,
+            en_passant_capture,
             castle: None,
         };
 
@@ -188,6 +192,66 @@ fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
     }
 
     legal_moves
+}
+
+pub fn castle_legal_moves(board: &Board) -> Vec<Move> {
+    let mut legal_moves = Vec::new();
+
+    match board.active_color {
+        Color::White => {
+            if board.castle_rights.contains(&CastleRights::WhiteKingside)
+                && board.get_piece((7, 5).into()).is_none()
+                && board.get_piece((7, 6).into()).is_none()
+                && board.square_attackers((7, 5).into()).is_empty()
+                && board.square_attackers((7, 6).into()).is_empty()
+            {
+                legal_moves.push(CastleKind::Kingside)
+            }
+
+            if board.castle_rights.contains(&CastleRights::WhiteQueenside)
+                && board.get_piece((7, 1).into()).is_none()
+                && board.get_piece((7, 2).into()).is_none()
+                && board.get_piece((7, 3).into()).is_none()
+                && board.square_attackers((7, 2).into()).is_empty()
+                && board.square_attackers((7, 3).into()).is_empty()
+            {
+                legal_moves.push(CastleKind::Queenside)
+            }
+        }
+
+        Color::Black => {
+            if board.castle_rights.contains(&CastleRights::BlackKingside)
+                && board.get_piece((0, 5).into()).is_none()
+                && board.get_piece((0, 6).into()).is_none()
+                && board.square_attackers((0, 5).into()).is_empty()
+                && board.square_attackers((0, 6).into()).is_empty()
+            {
+                legal_moves.push(CastleKind::Kingside)
+            }
+
+            if board.castle_rights.contains(&CastleRights::BlackQueenside)
+                && board.get_piece((0, 1).into()).is_none()
+                && board.get_piece((0, 2).into()).is_none()
+                && board.get_piece((0, 3).into()).is_none()
+                && board.square_attackers((0, 2).into()).is_empty()
+                && board.square_attackers((0, 3).into()).is_empty()
+            {
+                legal_moves.push(CastleKind::Queenside)
+            }
+        }
+    };
+
+    legal_moves
+        .iter()
+        .map(|castle| Move {
+            src_square: None,
+            dst_square: None,
+            promotion: None,
+            en_passant: None,
+            en_passant_capture: false,
+            castle: Some(*castle),
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -234,6 +298,17 @@ mod test {
             Board::from_fen("rnb1kbnr/ppp1pppp/4q3/3p4/P3P3/8/1PPP1PPP/RNBQKBNR w KQkq - 1 4")
                 .unwrap();
         assert_eq!(pawn_legal_moves((4, 4).into(), &board).len(), 1);
+        assert_eq!(
+            pawn_legal_moves((4, 4).into(), &board)[0],
+            Move {
+                src_square: Some((4, 4).into()),
+                dst_square: Some((3, 4).into()),
+                promotion: None,
+                en_passant: None,
+                en_passant_capture: false,
+                castle: None,
+            }
+        );
 
         // diagonal pinned pawn
         board = Board::from_fen("rnb1kbnr/ppp1pppp/8/q2p4/4P3/8/1PPP1PPP/RNBQKBNR w KQkq - 0 5")
@@ -254,6 +329,17 @@ mod test {
         board =
             Board::from_fen("rnbqkbnr/1ppppppp/p7/8/P7/8/1PPPPPPP/RNBQKBNR w KQkq - 0 2").unwrap();
         assert_eq!(pawn_legal_moves((4, 0).into(), &board).len(), 1);
+        assert_eq!(
+            pawn_legal_moves((4, 0).into(), &board)[0],
+            Move {
+                src_square: Some((4, 0).into()),
+                dst_square: Some((3, 0).into()),
+                promotion: None,
+                en_passant: None,
+                en_passant_capture: false,
+                castle: None,
+            }
+        );
 
         // capture
         board = Board::from_fen("rn2kbnr/pppqp1pp/8/3p1p2/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 5")
@@ -293,6 +379,52 @@ mod test {
         assert_eq!(
             piece_legal_moves(&Piece::Bishop(Color::Black), (1, 4).into(), &board).len(),
             0
+        );
+    }
+
+    #[test]
+    fn test_castle_legal_moves() {
+        // white kingside and queenside
+        let mut board =
+            Board::from_fen("r3k2r/ppp2ppp/2n1b3/3p4/3P4/2N1B3/PPP2PPP/R3K2R w KQkq - 0 1")
+                .unwrap();
+        assert_eq!(castle_legal_moves(&board).len(), 2);
+        assert_eq!(
+            castle_legal_moves(&board)[0].castle,
+            Some(CastleKind::Kingside)
+        );
+        assert_eq!(
+            castle_legal_moves(&board)[1].castle,
+            Some(CastleKind::Queenside)
+        );
+
+        // black kingside
+        board = Board::from_fen("r3k2r/ppp2ppp/2n1b3/3p2B1/3P4/2N5/PPP2PPP/R3K2R b KQkq - 1 1")
+            .unwrap();
+        assert_eq!(castle_legal_moves(&board).len(), 1);
+        assert_eq!(
+            castle_legal_moves(&board)[0].castle,
+            Some(CastleKind::Kingside)
+        );
+
+        // white kingside
+        board =
+            Board::from_fen("r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
+                .unwrap();
+        assert_eq!(castle_legal_moves(&board).len(), 1);
+        assert_eq!(
+            castle_legal_moves(&board)[0].castle,
+            Some(CastleKind::Kingside)
+        );
+
+        // black queenside
+        board =
+            Board::from_fen("r3kbnr/ppp1pppp/2nq4/3p4/3P2b1/P4N2/1PP1PPPP/RNBQKB1R b KQkq - 0 5")
+                .unwrap();
+        assert_eq!(castle_legal_moves(&board).len(), 1);
+        assert_eq!(
+            castle_legal_moves(&board)[0].castle,
+            Some(CastleKind::Queenside)
         );
     }
 }

@@ -1,5 +1,5 @@
 /// Represents a castle kind.
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum CastleKind {
     Kingside,
     Queenside,
@@ -17,7 +17,7 @@ impl CastleKind {
 }
 
 /// Represents the castle rights of a player.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum CastleRights {
     WhiteKingside,
     WhiteQueenside,

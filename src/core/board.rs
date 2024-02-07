@@ -69,7 +69,9 @@ impl Board {
         let r#move = Move::from_algebraic(algebraic_move, self);
 
         if let Some(ref r#move) = r#move {
-            self.make_move(r#move);
+            if self.legal_moves().contains(r#move) {
+                self.make_move(r#move);
+            }
         }
 
         r#move

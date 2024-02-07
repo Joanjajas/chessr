@@ -1,10 +1,10 @@
 use crate::constants::*;
-use crate::core::{Board, CastleKind, CastleRights, Color, Piece, Square};
+use crate::core::{Board, CastleKind, Color, Piece, Square};
 
 use regex::Regex;
 
 /// Represents a chess move.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Move {
     /// Source square of the piece moving
     pub src_square: Option<Square>,
@@ -27,14 +27,21 @@ pub struct Move {
 
 impl Move {
     /// Returns a [Move] struct representation of the given algebraic notation for the given board.
-    /// If the move is invalid or illega `None` will be returned
+    /// Will return a move when it is valid even if it is illegal.
     pub fn from_algebraic(r#move: &str, board: &Board) -> Option<Move> {
         // castling
         let re = Regex::new(CASTLE_REGEX).expect("Invalid castle regex");
 
         if re.is_match(r#move) {
             let castle_type = CastleKind::from_algebraic(r#move)?;
-            return castle(castle_type, board);
+            return Some(Move {
+                src_square: None,
+                dst_square: None,
+                en_passant: None,
+                en_passant_capture: false,
+                castle: Some(castle_type),
+                promotion: None,
+            });
         };
 
         // pawn move
@@ -230,69 +237,6 @@ impl Move {
     }
 }
 
-pub fn castle(castle_kind: CastleKind, board: &Board) -> Option<Move> {
-    match castle_kind {
-        CastleKind::Kingside => match board.active_color {
-            Color::White => {
-                if !board.castle_rights.contains(&CastleRights::WhiteKingside)
-                    || !board.square_attackers((7, 5).into()).is_empty()
-                    || !board.square_attackers((7, 6).into()).is_empty()
-                    || board.get_piece((7, 5).into()).is_some()
-                    || board.get_piece((7, 6).into()).is_some()
-                {
-                    return None;
-                }
-            }
-            Color::Black => {
-                if !board.castle_rights.contains(&CastleRights::BlackKingside)
-                    || !board.square_attackers((0, 5).into()).is_empty()
-                    || !board.square_attackers((0, 6).into()).is_empty()
-                    || board.get_piece((0, 5).into()).is_some()
-                    || board.get_piece((0, 6).into()).is_some()
-                {
-                    return None;
-                }
-            }
-        },
-
-        CastleKind::Queenside => match board.active_color {
-            Color::White => {
-                if !board.castle_rights.contains(&CastleRights::WhiteQueenside)
-                    || !board.square_attackers((7, 1).into()).is_empty()
-                    || !board.square_attackers((7, 2).into()).is_empty()
-                    || !board.square_attackers((7, 3).into()).is_empty()
-                    || board.get_piece((7, 1).into()).is_some()
-                    || board.get_piece((7, 2).into()).is_some()
-                    || board.get_piece((7, 3).into()).is_some()
-                {
-                    return None;
-                }
-            }
-            Color::Black => {
-                if !board.castle_rights.contains(&CastleRights::BlackQueenside)
-                    || !board.square_attackers((0, 1).into()).is_empty()
-                    || !board.square_attackers((0, 2).into()).is_empty()
-                    || !board.square_attackers((0, 3).into()).is_empty()
-                    || board.get_piece((0, 1).into()).is_some()
-                    || board.get_piece((0, 2).into()).is_some()
-                    || board.get_piece((0, 3).into()).is_some()
-                {
-                    return None;
-                }
-            }
-        },
-    }
-
-    Some(Move {
-        src_square: None,
-        dst_square: None,
-        promotion: None,
-        en_passant: None,
-        en_passant_capture: false,
-        castle: Some(castle_kind),
-    })
-}
-
 pub fn piece_move(
     piece: Piece,
     dst_square: Square,
@@ -300,14 +244,6 @@ pub fn piece_move(
     disambiguation_column: Option<usize>,
     board: &Board,
 ) -> Option<Move> {
-    // if the destination square is occupied by a piece of the same color, we can't move
-    if board
-        .get_piece(dst_square)
-        .is_some_and(|p| p.color() == &board.active_color)
-    {
-        return None;
-    }
-
     // handle pawn moves separately
     if let Piece::Pawn(_) = piece {
         return pawn_move(dst_square, board, disambiguation_column);
@@ -397,7 +333,6 @@ pub fn pawn_move(
     disambiguation_column: Option<usize>,
 ) -> Option<Move> {
     let piece = Piece::Pawn(board.active_color);
-    let dst_square_piece = board.get_piece(dst_square);
 
     for direction in piece.directions() {
         let src_square = Square(
@@ -405,7 +340,7 @@ pub fn pawn_move(
             (dst_square.1 as i8 - direction.1) as usize,
         );
 
-        // if the destination square is out of bounds, skip and continue with the next direction
+        // if the source square is out of bounds, skip and continue with the next direction
         if !(0..=7).contains(&src_square.0) || !(0..=7).contains(&src_square.1) {
             continue;
         }
@@ -414,36 +349,6 @@ pub fn pawn_move(
 
         // if the source square is empty, or it is not the piece we are moving, skip and continue with the next direction
         if src_square_piece.is_some_and(|p| p != piece) || src_square_piece.is_none() {
-            continue;
-        }
-
-        // check if is a forward move and is valid
-        let invalid_forward_move = direction.1 == 0 && dst_square_piece.is_some();
-
-        // check if is a two square move and is valid
-        let invalid_two_square_move_row = src_square.0 != 6 && src_square.0 != 1;
-        let piece_blocking_two_square_move = match board.active_color {
-            Color::Black => board
-                .get_piece((dst_square.0 - 1, dst_square.1).into())
-                .is_some(),
-            Color::White => board
-                .get_piece((dst_square.0 + 1, dst_square.1).into())
-                .is_some(),
-        };
-        let invalid_two_square_move = (direction.0 == 2 || direction.0 == -2)
-            && (invalid_two_square_move_row
-                || piece_blocking_two_square_move
-                || dst_square_piece.is_some());
-
-        // check if is a capture move and is valid
-        let invalid_en_passant =
-            board.en_passant.is_some_and(|s| s != dst_square) || board.en_passant.is_none();
-        let invalid_capture = direction.1 != 0
-            && (dst_square_piece.is_none() && invalid_en_passant)
-            || dst_square_piece.is_some_and(|p| p.color() == &board.active_color);
-
-        // if one of the conditions is met, skip and continue with the next direction
-        if invalid_forward_move || invalid_two_square_move || invalid_capture {
             continue;
         }
 
@@ -465,19 +370,14 @@ pub fn pawn_move(
             None
         };
 
-        let r#move = Move {
+        return Some(Move {
             src_square: Some(src_square),
             dst_square: Some(dst_square),
             promotion: None,
             en_passant,
             en_passant_capture,
             castle: None,
-        };
-
-        // don't move the pawn if it is pinned
-        if !board.future_check(&r#move) {
-            return Some(r#move);
-        }
+        });
     }
 
     None
