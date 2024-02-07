@@ -2,7 +2,7 @@ use crate::core::{r#move, Board, CastleKind, Color, Move, Piece, Square};
 
 /// Returns a vec of [Move] containing all possible legal moves in the current position.
 pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
-    let mut moves = Vec::new();
+    let mut legal_moves = Vec::new();
 
     // piece moves
     for (row, col) in board.pieces.iter().enumerate() {
@@ -11,26 +11,27 @@ pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
                 continue;
             }
 
-            let mut legal_moves = legal_moves(&piece.unwrap(), (row, col).into(), board);
-            moves.append(&mut legal_moves);
+            let mut piece_legal_moves =
+                piece_legal_moves(&piece.unwrap(), (row, col).into(), board);
+            legal_moves.append(&mut piece_legal_moves);
         }
     }
 
     // kingside castling
     if let Some(castle) = r#move::castle(CastleKind::Kingside, board) {
-        moves.push(castle);
+        legal_moves.push(castle);
     }
 
     // queenside castling
     if let Some(castle) = r#move::castle(CastleKind::Queenside, board) {
-        moves.push(castle);
+        legal_moves.push(castle);
     }
 
-    moves
+    legal_moves
 }
 
 /// Returns a vec of [Move] containing all possible legal moves for the given piece in the current position.
-fn legal_moves(piece: &Piece, src_square: Square, board: &Board) -> Vec<Move> {
+fn piece_legal_moves(piece: &Piece, src_square: Square, board: &Board) -> Vec<Move> {
     let mut legal_moves = Vec::new();
 
     // handle pawn moves separately
@@ -161,9 +162,11 @@ fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
                 };
 
                 // don't move the pawn if it is pinned
-                if !board.future_check(&r#move) {
-                    legal_moves.push(r#move);
+                if board.future_check(&r#move) {
+                    break;
                 }
+
+                legal_moves.push(r#move);
             }
 
             continue;
@@ -261,6 +264,11 @@ mod test {
         board =
             Board::from_fen("r2qkbnr/pPppppp1/b1n4p/8/8/8/PP1PPPPP/RNBQKBNR w KQkq - 0 5").unwrap();
         assert_eq!(pawn_legal_moves((1, 1).into(), &board).len(), 8);
+
+        // promotion pinned
+        board =
+            Board::from_fen("r2qkbnr/pPppppp1/b1n4p/8/8/8/PP1PPPPP/RNBQKBNR w KQkq - 0 5").unwrap();
+        assert_eq!(pawn_legal_moves((1, 3).into(), &board).len(), 4);
     }
 
     #[test]
@@ -268,14 +276,14 @@ mod test {
         // king can't move
         let mut board = Board::from_fen("R7/2p5/8/2k3p1/1r6/K1P5/PP6/8 w - - 6 43").unwrap();
         assert_eq!(
-            legal_moves(&Piece::King(Color::White), (5, 0).into(), &board).len(),
+            piece_legal_moves(&Piece::King(Color::White), (5, 0).into(), &board).len(),
             0
         );
 
         // king under check
         board = Board::from_fen("5R2/2p5/8/2k3p1/r7/K1P5/PP6/8 w - - 8 44").unwrap();
         assert_eq!(
-            legal_moves(&Piece::King(Color::White), (5, 0).into(), &board).len(),
+            piece_legal_moves(&Piece::King(Color::White), (5, 0).into(), &board).len(),
             2
         );
 
@@ -283,7 +291,7 @@ mod test {
         board = Board::from_fen("rnbqk1nr/1pppbppp/p7/8/4QB2/P7/1PP1PPPP/RN2KBNR b KQkq - 3 5")
             .unwrap();
         assert_eq!(
-            legal_moves(&Piece::Bishop(Color::Black), (1, 4).into(), &board).len(),
+            piece_legal_moves(&Piece::Bishop(Color::Black), (1, 4).into(), &board).len(),
             0
         );
     }
