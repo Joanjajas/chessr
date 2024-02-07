@@ -91,7 +91,7 @@ fn legal_moves(piece: &Piece, src_square: Square, board: &Board) -> Vec<Move> {
     legal_moves
 }
 
-/// Returns a vec of [Move] containing all possible legal moves for the ginve pawn in the current position.
+/// Returns a vec of [Move] containing all possible legal moves for the given pawn in the current position.
 fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
     let mut legal_moves = Vec::new();
     let piece = Piece::Pawn(board.active_color);
@@ -141,6 +141,34 @@ fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
             continue;
         }
 
+        // if the move is a promotion, we have 4 different possible promotions
+        if (dst_square.0 == 0 && board.active_color == Color::White)
+            || (dst_square.0 == 7 && board.active_color == Color::Black)
+        {
+            for promotion in &[
+                Piece::Queen(board.active_color),
+                Piece::Rook(board.active_color),
+                Piece::Bishop(board.active_color),
+                Piece::Knight(board.active_color),
+            ] {
+                let r#move = Move {
+                    src_square: Some(src_square),
+                    dst_square: Some(dst_square),
+                    promotion: Some(*promotion),
+                    en_passant: None,
+                    en_passant_capture: false,
+                    castle: None,
+                };
+
+                // don't move the pawn if it is pinned
+                if !board.future_check(&r#move) {
+                    legal_moves.push(r#move);
+                }
+            }
+
+            continue;
+        }
+
         let r#move = Move {
             src_square: Some(src_square),
             dst_square: Some(dst_square),
@@ -181,6 +209,10 @@ mod test {
         // check
         board = Board::from_fen("4R1k1/ppp2ppp/2b5/8/3P1B2/P4N2/2P2PPP/6K1 b - - 0 20").unwrap();
         assert_eq!(board.legal_moves().len(), 1);
+
+        // promotion
+        board = Board::from_fen("Q7/5P2/8/2kN4/2p5/1p6/1P2K1B1/8 w - - 1 63").unwrap();
+        assert_eq!(board.legal_moves().len(), 40);
 
         board = Board::from_fen("rnb2rk1/ppp2ppp/3p1n2/8/3PP3/P1P2N2/2P2PPP/R1B1KB1R b KQ - 0 9")
             .unwrap();
@@ -224,6 +256,11 @@ mod test {
         board = Board::from_fen("rn2kbnr/pppqp1pp/8/3p1p2/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 5")
             .unwrap();
         assert_eq!(pawn_legal_moves((4, 4).into(), &board).len(), 3);
+
+        // promotion
+        board =
+            Board::from_fen("r2qkbnr/pPppppp1/b1n4p/8/8/8/PP1PPPPP/RNBQKBNR w KQkq - 0 5").unwrap();
+        assert_eq!(pawn_legal_moves((1, 1).into(), &board).len(), 8);
     }
 
     #[test]
