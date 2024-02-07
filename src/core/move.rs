@@ -361,7 +361,7 @@ pub fn pawn_move(
 
         // check for en passant
         let en_passant_capture = board.en_passant.is_some_and(|s| s == dst_square);
-        let en_passant = if direction.0 == 2 {
+        let en_passant = if direction.0 == 2 || direction.0 == -2 {
             match board.active_color {
                 Color::Black => Some((dst_square.0 - 1, dst_square.1).into()),
                 Color::White => Some((dst_square.0 + 1, dst_square.1).into()),
