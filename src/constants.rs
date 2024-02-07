@@ -17,6 +17,10 @@ pub const PIECE_CAPTURE_ROW_DISAMBIGUATION_REGEX: &str = r"^([KQBNR])([1-8])x([a
 pub const PIECE_CAPTURE_COLUMN_DISAMBIGUATION_REGEX: &str = r"^([KQBNR])([a-h])x([a-h])([1-8])(\+|\#)?$";
 pub const PIECE_CAPTURE_ROW_AND_COLUMN_DISAMBIGUATION_REGEX: &str = r"^([KQBNR])([a-h])([1-8])x([a-h])([1-8])(\+|\#)?$";
 
+// Regex pattern for UCI notation
+pub const UCI_MOVE_REGEX: &str = r"^([a-h])([1-8])([a-h])([1-8])([qrbn]?)$";
+
+
 // Pieces move directions
 pub const PAWN_MOVE_DIRECTIONS: [(i8, i8); 2] = [(1, 0), (2, 0)];
 pub const PAWN_CAPTURE_DIRECTIONS: [(i8, i8); 2] = [(1, 1), (1, -1)];

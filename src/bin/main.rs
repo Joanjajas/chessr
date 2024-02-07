@@ -41,7 +41,7 @@ fn play(mut board: Board) -> Result<()> {
         println!("{}", board);
         let mut r#move = String::new();
         std::io::stdin().read_line(&mut r#move)?;
-        let algo = board.make_move_algebraic(r#move.trim());
+        board.make_uci_move(r#move.trim());
         println!("{}", board.fen());
 
         if board.checkmate() {
@@ -72,7 +72,7 @@ fn parse_lichess_moves() -> Result<()> {
             sum = 0;
             return;
         }
-        board.make_move_algebraic(w);
+        board.make_algebraic_move(w);
         println!("====================");
         println!("{}", board);
         println!("{}", board.legal_moves().len());

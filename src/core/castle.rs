@@ -6,11 +6,20 @@ pub enum CastleKind {
 }
 
 impl CastleKind {
-    /// Tries to create a castle kind from an algebraic notation.
+    /// Tries to create a castle kind from algebraic notation.
     pub fn from_algebraic(str: &str) -> Option<CastleKind> {
         match str {
             "O-O" | "0-0" | "o-o" => Some(CastleKind::Kingside),
             "O-O-O" | "0-0-0" | "o-o-o" => Some(CastleKind::Queenside),
+            _ => None,
+        }
+    }
+
+    // Tries to create a castle kind from UCI notation.
+    pub fn from_uci(uci: &str) -> Option<CastleKind> {
+        match uci {
+            "e1g1" | "e8g8" => Some(CastleKind::Kingside),
+            "e1c1" | "e8c8" => Some(CastleKind::Queenside),
             _ => None,
         }
     }

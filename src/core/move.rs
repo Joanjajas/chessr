@@ -12,9 +12,6 @@ pub struct Move {
     /// Destination square of the piece moving
     pub dst_square: Option<Square>,
 
-    /// En passant target square
-    pub en_passant: Option<Square>,
-
     /// Castle type
     pub castle: Option<CastleKind>,
 
@@ -23,7 +20,40 @@ pub struct Move {
 }
 
 impl Move {
-    /// Returns a [Move] struct representation of the given algebraic notation for the given board.
+    /// Returns a [Move] struct representation of the given move in UCI notation.
+    pub fn from_uci(uci_str: &str, color: Color) -> Option<Move> {
+        let re = Regex::new(UCI_MOVE_REGEX).expect("Invalid UCI move regex");
+
+        if !re.is_match(uci_str) {
+            return None;
+        }
+
+        // uci piece move notation is long algebraic notation, so we can use the from_algebraic method
+        let src_square = Square::from_algebraic(&uci_str[0..2])?;
+        let dst_square = Square::from_algebraic(&uci_str[2..4])?;
+        let castle = CastleKind::from_uci(uci_str);
+        let promotion = match uci_str.chars().nth(4) {
+            Some(char) => Some(Piece::from_algebraic_char(char, color)?),
+            None => None,
+        };
+
+        match castle {
+            Some(castle_type) => Some(Move {
+                src_square: None,
+                dst_square: None,
+                castle: Some(castle_type),
+                promotion: None,
+            }),
+            None => Some(Move {
+                src_square: Some(src_square),
+                dst_square: Some(dst_square),
+                castle: None,
+                promotion,
+            }),
+        }
+    }
+
+    /// Returns a [Move] struct representation of the given move in standard algebraic notation.
     /// Will return a move when it is valid even if it is illegal.
     pub fn from_algebraic(r#move: &str, board: &Board) -> Option<Move> {
         // castling
@@ -34,7 +64,6 @@ impl Move {
             return Some(Move {
                 src_square: None,
                 dst_square: None,
-                en_passant: None,
                 castle: Some(castle_type),
                 promotion: None,
             });
@@ -45,7 +74,7 @@ impl Move {
 
         if re.is_match(r#move) {
             let dst_square = Square::from_algebraic(r#move)?;
-            return piece_move(
+            return algebraic_piece_move(
                 Piece::Pawn(board.active_color),
                 dst_square,
                 None,
@@ -61,7 +90,7 @@ impl Move {
             let piece = Piece::from_algebraic_char(r#move.chars().next()?, board.active_color)?;
             let dst_square = Square::from_algebraic(&r#move[1..])?;
 
-            return piece_move(piece, dst_square, None, None, board);
+            return algebraic_piece_move(piece, dst_square, None, None, board);
         }
 
         // piece move row disambiguation
@@ -74,7 +103,7 @@ impl Move {
             let dst_square = Square::from_algebraic(&r#move[2..])?;
             let disambiguation_row = 7 - (chars.next()? as usize - 49);
 
-            return piece_move(piece, dst_square, Some(disambiguation_row), None, board);
+            return algebraic_piece_move(piece, dst_square, Some(disambiguation_row), None, board);
         }
 
         // piece move column disambiguation
@@ -87,7 +116,13 @@ impl Move {
             let dst_square = Square::from_algebraic(&r#move[2..])?;
             let disambiguation_column = chars.next()? as usize - 97;
 
-            return piece_move(piece, dst_square, None, Some(disambiguation_column), board);
+            return algebraic_piece_move(
+                piece,
+                dst_square,
+                None,
+                Some(disambiguation_column),
+                board,
+            );
         }
 
         // piece move row and column disambiguation
@@ -100,7 +135,7 @@ impl Move {
             let dst_square = Square::from_algebraic(&r#move[3..])?;
             let src_square = Square::from_algebraic(&r#move[1..3])?;
 
-            return piece_move(
+            return algebraic_piece_move(
                 piece,
                 dst_square,
                 Some(src_square.0),
@@ -116,7 +151,7 @@ impl Move {
             let dst_square = Square::from_algebraic(&r#move[2..])?;
             let disambiguation_column = r#move.chars().nth(0)? as usize - 97;
 
-            return piece_move(
+            return algebraic_piece_move(
                 Piece::Pawn(board.active_color),
                 dst_square,
                 None,
@@ -133,7 +168,7 @@ impl Move {
             let piece = Piece::from_algebraic_char(chars.next()?, board.active_color)?;
             let dst_square = Square::from_algebraic(&r#move[2..])?;
 
-            return piece_move(piece, dst_square, None, None, board);
+            return algebraic_piece_move(piece, dst_square, None, None, board);
         }
 
         // piece capture row disambiguation
@@ -146,7 +181,7 @@ impl Move {
             let dst_square = Square::from_algebraic(&r#move[3..])?;
             let disambiguation_row = 7 - (chars.next()? as usize - 49);
 
-            return piece_move(piece, dst_square, Some(disambiguation_row), None, board);
+            return algebraic_piece_move(piece, dst_square, Some(disambiguation_row), None, board);
         }
 
         // piece capture column disambiguation
@@ -159,7 +194,13 @@ impl Move {
             let dst_square = Square::from_algebraic(&r#move[3..])?;
             let disambiguation_column = chars.next()? as usize - 97;
 
-            return piece_move(piece, dst_square, None, Some(disambiguation_column), board);
+            return algebraic_piece_move(
+                piece,
+                dst_square,
+                None,
+                Some(disambiguation_column),
+                board,
+            );
         }
 
         // piece capture row and column disambiguation
@@ -172,7 +213,7 @@ impl Move {
             let dst_square = Square::from_algebraic(&r#move[4..])?;
             let src_square = Square::from_algebraic(&r#move[1..3])?;
 
-            return piece_move(
+            return algebraic_piece_move(
                 piece,
                 dst_square,
                 Some(src_square.0),
@@ -189,7 +230,7 @@ impl Move {
             let promotion_piece =
                 Piece::from_algebraic_char(r#move.chars().nth(3)?, board.active_color)?;
 
-            let mut r#move = piece_move(
+            let mut r#move = algebraic_piece_move(
                 Piece::Pawn(board.active_color),
                 dst_square,
                 None,
@@ -214,7 +255,7 @@ impl Move {
             let promotion_piece =
                 Piece::from_algebraic_char(r#move.chars().nth(5)?, board.active_color)?;
 
-            let mut r#move = piece_move(
+            let mut r#move = algebraic_piece_move(
                 Piece::Pawn(board.active_color),
                 dst_square,
                 None,
@@ -233,7 +274,8 @@ impl Move {
     }
 }
 
-pub fn piece_move(
+/// Returns a move from algebraic notation data.
+fn algebraic_piece_move(
     piece: Piece,
     dst_square: Square,
     disambiguation_row: Option<usize>,
@@ -242,7 +284,7 @@ pub fn piece_move(
 ) -> Option<Move> {
     // handle pawn moves separately
     if let Piece::Pawn(_) = piece {
-        return pawn_move(dst_square, board, disambiguation_column);
+        return algebraic_pawn_move(dst_square, board, disambiguation_column);
     }
 
     let mut valid_moves = vec![];
@@ -297,13 +339,10 @@ pub fn piece_move(
                 src_square: Some(src_square),
                 dst_square: Some(dst_square),
                 promotion: None,
-                en_passant: None,
                 castle: None,
             };
 
-            if !board.future_check(&r#move) {
-                valid_moves.push(r#move);
-            }
+            valid_moves.push(r#move);
 
             break;
         }
@@ -322,7 +361,8 @@ pub fn piece_move(
     }
 }
 
-pub fn pawn_move(
+/// Returns a pawn move from algebraic notation data.
+fn algebraic_pawn_move(
     dst_square: Square,
     board: &Board,
     disambiguation_column: Option<usize>,
@@ -354,24 +394,57 @@ pub fn pawn_move(
             }
         }
 
-        // check for en passant
-        let en_passant = if direction.0 == 2 || direction.0 == -2 {
-            match board.active_color {
-                Color::Black => Some((dst_square.0 - 1, dst_square.1).into()),
-                Color::White => Some((dst_square.0 + 1, dst_square.1).into()),
-            }
-        } else {
-            None
-        };
-
         return Some(Move {
             src_square: Some(src_square),
             dst_square: Some(dst_square),
             promotion: None,
-            en_passant,
             castle: None,
         });
     }
 
     None
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_move_from_uci_notation() {
+        // normal pawn move
+        let r#move = Move::from_uci("e2e4", Color::White);
+        assert_eq!(
+            r#move,
+            Some(Move {
+                src_square: Some(Square(6, 4)),
+                dst_square: Some(Square(4, 4)),
+                promotion: None,
+                castle: None,
+            })
+        );
+
+        // white kingside castle
+        let r#move = Move::from_uci("e1g1", Color::White);
+        assert_eq!(
+            r#move,
+            Some(Move {
+                src_square: None,
+                dst_square: None,
+                promotion: None,
+                castle: Some(CastleKind::Kingside),
+            })
+        );
+
+        // promotion
+        let r#move = Move::from_uci("e7e8q", Color::Black);
+        assert_eq!(
+            r#move,
+            Some(Move {
+                src_square: Some(Square(1, 4)),
+                dst_square: Some(Square(0, 4)),
+                promotion: Some(Piece::Queen(Color::Black)),
+                castle: None,
+            })
+        );
+    }
 }

@@ -51,7 +51,6 @@ fn piece_legal_moves(piece: &Piece, src_square: Square, board: &Board) -> Vec<Mo
                 src_square: Some(src_square),
                 dst_square: Some(dst_square),
                 promotion: None,
-                en_passant: None,
                 castle: None,
             };
 
@@ -149,7 +148,6 @@ fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
                     src_square: Some(src_square),
                     dst_square: Some(dst_square),
                     promotion: Some(*promotion),
-                    en_passant: None,
                     castle: None,
                 };
 
@@ -164,20 +162,10 @@ fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
             continue;
         }
 
-        let en_passant = if direction.0 == 2 || direction.0 == -2 {
-            match board.active_color {
-                Color::Black => Some((dst_square.0 - 1, dst_square.1).into()),
-                Color::White => Some((dst_square.0 + 1, dst_square.1).into()),
-            }
-        } else {
-            None
-        };
-
         let r#move = Move {
             src_square: Some(src_square),
             dst_square: Some(dst_square),
             promotion: None,
-            en_passant,
             castle: None,
         };
 
@@ -244,7 +232,6 @@ pub fn castle_legal_moves(board: &Board) -> Vec<Move> {
             src_square: None,
             dst_square: None,
             promotion: None,
-            en_passant: None,
             castle: Some(*castle),
         })
         .collect()
@@ -300,7 +287,6 @@ mod test {
                 src_square: Some((4, 4).into()),
                 dst_square: Some((3, 4).into()),
                 promotion: None,
-                en_passant: None,
                 castle: None,
             }
         );
@@ -330,7 +316,6 @@ mod test {
                 src_square: Some((4, 0).into()),
                 dst_square: Some((3, 0).into()),
                 promotion: None,
-                en_passant: None,
                 castle: None,
             }
         );
