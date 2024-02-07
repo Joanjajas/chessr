@@ -98,19 +98,6 @@ impl Board {
     /// Makes a move on the board, updating the board state.
     /// This method assumes that the move is legal and valid, otherwise undefined behavior may occur.
     pub(crate) fn make_move(&mut self, r#move: &Move) {
-        // handle en pasant capture
-        if r#move.en_passant_capture {
-            let en_passant_square = self.en_passant.unwrap();
-
-            // calculate the square in which the en passant target is located
-            let en_passant_capture_square = match self.active_color {
-                Color::White => (en_passant_square.0 + 1, en_passant_square.1).into(),
-                Color::Black => (en_passant_square.0 - 1, en_passant_square.1).into(),
-            };
-
-            self.set_piece(en_passant_capture_square, None);
-        }
-
         // handle castling
         if let Some(ref castle) = r#move.castle {
             match castle {
@@ -119,8 +106,22 @@ impl Board {
             }
         }
 
-        // handle normal move and promotion
+        // handle normal move
         if let (Some(src_square), Some(dst_square)) = (r#move.src_square, r#move.dst_square) {
+            // handle en pasant capture
+            let en_passant_capture = self.en_passant.is_some_and(|s| s == dst_square);
+            if en_passant_capture {
+                let en_passant_square = self.en_passant.unwrap();
+
+                // calculate the square in which the en passant target is located
+                let en_passant_capture_square = match self.active_color {
+                    Color::White => (en_passant_square.0 + 1, en_passant_square.1).into(),
+                    Color::Black => (en_passant_square.0 - 1, en_passant_square.1).into(),
+                };
+
+                self.set_piece(en_passant_capture_square, None);
+            }
+
             let src_square_piece = self.get_piece(src_square);
             let dst_square_piece = self.get_piece(dst_square);
 
@@ -130,7 +131,7 @@ impl Board {
             // reset halfmove clock if a pawn is moved or a piece is captured
             if src_square_piece == Some(Piece::Pawn(self.active_color))
                 || dst_square_piece.is_some()
-                || r#move.en_passant_capture
+                || en_passant_capture
             {
                 self.halfmove_clock = 0;
             } else {

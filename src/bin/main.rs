@@ -42,7 +42,6 @@ fn play(mut board: Board) -> Result<()> {
         let mut r#move = String::new();
         std::io::stdin().read_line(&mut r#move)?;
         let algo = board.make_move_algebraic(r#move.trim());
-        println!("{:?}", algo);
         println!("{}", board.fen());
 
         if board.checkmate() {

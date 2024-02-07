@@ -52,7 +52,6 @@ fn piece_legal_moves(piece: &Piece, src_square: Square, board: &Board) -> Vec<Mo
                 dst_square: Some(dst_square),
                 promotion: None,
                 en_passant: None,
-                en_passant_capture: false,
                 castle: None,
             };
 
@@ -151,7 +150,6 @@ fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
                     dst_square: Some(dst_square),
                     promotion: Some(*promotion),
                     en_passant: None,
-                    en_passant_capture: false,
                     castle: None,
                 };
 
@@ -166,7 +164,6 @@ fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
             continue;
         }
 
-        let en_passant_capture = board.en_passant.is_some_and(|s| s == dst_square);
         let en_passant = if direction.0 == 2 || direction.0 == -2 {
             match board.active_color {
                 Color::Black => Some((dst_square.0 - 1, dst_square.1).into()),
@@ -181,7 +178,6 @@ fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
             dst_square: Some(dst_square),
             promotion: None,
             en_passant,
-            en_passant_capture,
             castle: None,
         };
 
@@ -249,7 +245,6 @@ pub fn castle_legal_moves(board: &Board) -> Vec<Move> {
             dst_square: None,
             promotion: None,
             en_passant: None,
-            en_passant_capture: false,
             castle: Some(*castle),
         })
         .collect()
@@ -306,7 +301,6 @@ mod test {
                 dst_square: Some((3, 4).into()),
                 promotion: None,
                 en_passant: None,
-                en_passant_capture: false,
                 castle: None,
             }
         );
@@ -337,7 +331,6 @@ mod test {
                 dst_square: Some((3, 0).into()),
                 promotion: None,
                 en_passant: None,
-                en_passant_capture: false,
                 castle: None,
             }
         );

@@ -15,9 +15,6 @@ pub struct Move {
     /// En passant target square
     pub en_passant: Option<Square>,
 
-    /// Whether the move is an en passant capture
-    pub en_passant_capture: bool,
-
     /// Castle type
     pub castle: Option<CastleKind>,
 
@@ -38,7 +35,6 @@ impl Move {
                 src_square: None,
                 dst_square: None,
                 en_passant: None,
-                en_passant_capture: false,
                 castle: Some(castle_type),
                 promotion: None,
             });
@@ -302,7 +298,6 @@ pub fn piece_move(
                 dst_square: Some(dst_square),
                 promotion: None,
                 en_passant: None,
-                en_passant_capture: false,
                 castle: None,
             };
 
@@ -360,7 +355,6 @@ pub fn pawn_move(
         }
 
         // check for en passant
-        let en_passant_capture = board.en_passant.is_some_and(|s| s == dst_square);
         let en_passant = if direction.0 == 2 || direction.0 == -2 {
             match board.active_color {
                 Color::Black => Some((dst_square.0 - 1, dst_square.1).into()),
@@ -375,7 +369,6 @@ pub fn pawn_move(
             dst_square: Some(dst_square),
             promotion: None,
             en_passant,
-            en_passant_capture,
             castle: None,
         });
     }
