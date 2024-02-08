@@ -6,8 +6,8 @@ use std::fmt::Display;
 pub struct Square(pub usize, pub usize);
 
 impl Square {
-    /// Tries to convert an string into a square
-    pub fn try_from_str(algebraic: &str) -> Option<Square> {
+    /// Tries to convert an algebraic notation string into a square
+    pub fn from_algebraic(algebraic: &str) -> Option<Square> {
         let mut chars = algebraic.chars();
         let column_char = chars.next()?;
         let row_char = chars.next()?;

@@ -90,7 +90,7 @@ pub fn fen_to_board(fen_string: &str) -> Result<Board, FenParseError> {
 
     let en_passant = match *fen_blocks.get(3).ok_or(FenParseError::FenString)? {
         "-" => None,
-        s => Some(Square::try_from_str(s).ok_or(FenParseError::EnPassant)?),
+        s => Some(Square::from_algebraic(s).ok_or(FenParseError::EnPassant)?),
     };
 
     // optional fields
