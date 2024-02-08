@@ -378,7 +378,7 @@ impl Board {
     /// Applies a move on the board, updating the board state.
     /// This method assumes that the move is legal and valid, otherwise
     /// undefined behavior may occur.
-    pub fn apply_move(&mut self, r#move: &Move) {
+    pub(crate) fn apply_move(&mut self, r#move: &Move) {
         // handle castling
         if let Some(ref castle) = r#move.castle {
             match castle {

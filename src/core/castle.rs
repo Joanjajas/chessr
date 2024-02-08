@@ -29,8 +29,8 @@ impl CastleKind {
     /// Returns a SAN string of the castle kind.
     pub fn to_san_str(&self) -> String {
         match self {
-            CastleKind::Kingside => "O-O".to_string(),
-            CastleKind::Queenside => "O-O-O".to_string(),
+            CastleKind::Kingside => "O-O".into(),
+            CastleKind::Queenside => "O-O-O".into(),
         }
     }
 
@@ -38,12 +38,12 @@ impl CastleKind {
     pub fn to_uci_str(&self, color: &Color) -> String {
         match self {
             CastleKind::Kingside => match color {
-                Color::White => "e1g1".to_string(),
-                Color::Black => "e8g8".to_string(),
+                Color::White => "e1g1".into(),
+                Color::Black => "e8g8".into(),
             },
             CastleKind::Queenside => match color {
-                Color::White => "e1c1".to_string(),
-                Color::Black => "e8c8".to_string(),
+                Color::White => "e1c1".into(),
+                Color::Black => "e8c8".into(),
             },
         }
     }

@@ -34,8 +34,8 @@ impl Move {
         let src_square = self.src_square.unwrap();
         let dst_square = self.dst_square.unwrap();
         let promotion = match self.promotion {
-            Some(piece) => piece.to_uci_char(),
-            None => ' ',
+            Some(piece) => piece.to_uci_char().to_string(),
+            None => "".to_string(),
         };
 
         format!("{}-{}{}", src_square, dst_square, promotion)

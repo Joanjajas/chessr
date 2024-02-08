@@ -92,12 +92,12 @@ fn random_game() -> Result<()> {
         let legal_moves = board.legal_moves();
 
         let r#move = legal_moves[random::<usize>() % legal_moves.len()];
-        print!(
+        println!(
             "Play Move ({}): {}",
             board.active_color,
             r#move.to_uci_str()
         );
-        board.apply_move(&r#move);
+        board.make_move(&r#move.to_uci_str());
 
         println!("");
         println!("============================================================");
