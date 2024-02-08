@@ -98,7 +98,7 @@ impl Board {
     ///
     /// let board = Board::from_fen("rnbqk1nr/ppp2ppp/4p3/3p4/1bPP4/5N2/PP2PPPP/RNBQKB1R w KQkq - 2 4").unwrap();
     /// assert_eq!(board.checkers().len(), 1);
-    /// assert_eq!(board.checkers()[0].0.fen(), 'b');
+    /// assert_eq!(board.checkers()[0].0.to_fen_char(), 'b');
     /// assert_eq!(board.checkers()[0].1.to_string(), "b4");
     pub fn checkers(&self) -> Vec<(Piece, Square)> {
         self.square_attackers(self.king_square())
@@ -634,30 +634,42 @@ impl Board {
 
 impl std::fmt::Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut board = String::new();
+        let fisrt_line = "┌───┬───┬───┬───┬───┬───┬───┬───┐";
+        let last_line = "└───┴───┴───┴───┴───┴───┴───┴───┘";
+        let horizontal_line = "├───┼───┼───┼───┼───┼───┼───┼───┤";
+        let rows = ['8', '7', '6', '5', '4', '3', '2', '1'];
+        let cols = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
-        for row in self.pieces.iter() {
-            for piece in row.iter() {
-                match piece {
-                    Some(Piece::Pawn(Color::Black)) => board.push('♙'),
-                    Some(Piece::Knight(Color::Black)) => board.push('♘'),
-                    Some(Piece::Bishop(Color::Black)) => board.push('♗'),
-                    Some(Piece::Rook(Color::Black)) => board.push('♖'),
-                    Some(Piece::Queen(Color::Black)) => board.push('♕'),
-                    Some(Piece::King(Color::Black)) => board.push('♔'),
-                    Some(Piece::Pawn(Color::White)) => board.push('♟'),
-                    Some(Piece::Knight(Color::White)) => board.push('♞'),
-                    Some(Piece::Bishop(Color::White)) => board.push('♝'),
-                    Some(Piece::Rook(Color::White)) => board.push('♜'),
-                    Some(Piece::Queen(Color::White)) => board.push('♛'),
-                    Some(Piece::King(Color::White)) => board.push('♚'),
-                    None => board.push(' '),
+        writeln!(f, "{}", fisrt_line)?;
+
+        for (i, row) in self.pieces.iter().enumerate() {
+            write!(f, "│")?;
+            for (j, piece_option) in row.iter().enumerate() {
+                if j == 7 {
+                    match piece_option {
+                        Some(piece) => write!(f, " {} │ {}", piece, rows[i]),
+                        None => write!(f, "   │ {}", rows[i]),
+                    }?;
+                } else {
+                    match piece_option {
+                        Some(piece) => write!(f, " {} │", piece),
+                        None => write!(f, "   │"),
+                    }?;
                 }
             }
-            board.push('\n');
+
+            if i != 7 {
+                writeln!(f, "\n{}", horizontal_line)?;
+            } else {
+                writeln!(f, "\n{}", last_line)?;
+            }
         }
 
-        write!(f, "{}", board)
+        for col in cols.iter() {
+            write!(f, "  {} ", col)?;
+        }
+
+        Ok(())
     }
 }
 

@@ -1,8 +1,11 @@
 use anyhow::Result;
 use rand::random;
 use std::fs::read_to_string;
+use std::io::{stdin, stdout, Write};
 
 use chessr::Board;
+
+const STARTPOS: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 fn main() {
     if let Err(e) = run() {
@@ -12,66 +15,107 @@ fn main() {
 }
 
 fn run() -> Result<()> {
-    println!("FEN, rep or new:");
     let mut input = String::new();
-    std::io::stdin().read_line(&mut input)?;
+    print!("Select a move (FEN, rand, rep, new): ");
+    stdout().flush()?;
+    stdin().read_line(&mut input)?;
 
     match input.trim() {
         "fen" => {
-            println!("Enter FEN:");
             let mut fen = String::new();
-            std::io::stdin().read_line(&mut fen)?;
-            let board = Board::from_fen(&fen)?;
+            print!("Enter FEN: ");
+            stdout().flush()?;
+            stdin().read_line(&mut fen)?;
 
-            play(board)?;
+            play(&fen)?;
             Ok(())
         }
         "new" => {
-            let board = Board::new();
-            play(board)?;
+            play(STARTPOS)?;
             Ok(())
         }
         "rep" => parse_lichess_moves(),
-        "rand" => {
-            let mut board = Board::new();
-            loop {
-                let moves = board.legal_moves();
-                if board.checkmate() || board.draw() {
-                    println!("====================");
-                    println!("{}", board);
-                    println!("Game over!");
-                    break;
-                }
-                let r#move = moves[random::<usize>() % moves.len()];
-                board.apply_move(&r#move);
-                println!("====================");
-                println!("{}", board);
-                println!("{}", board.fen());
-            }
-            Ok(())
-        }
+        "rand" => random_game(),
         _ => Ok(()),
     }
 }
 
-fn play(mut board: Board) -> Result<()> {
+fn play(startpos: &str) -> Result<()> {
+    let mut board = Board::from_fen(startpos)?;
+    println!("");
+    println!("============================================================");
+    println!("");
+    println!("{}", board);
+    println!("");
+    println!("FEN: {}", board.fen());
+
     loop {
-        println!("====================");
-        println!("{}", board);
         let mut r#move = String::new();
-        std::io::stdin().read_line(&mut r#move)?;
+        print!("Play Move ({}): {}", board.active_color, r#move);
+        stdout().flush()?;
+        stdin().read_line(&mut r#move)?;
         board.make_move(r#move.trim());
-        println!("{}", board.fen());
-        println!("{}", board.insufficient_material());
+
+        println!("");
+        println!("============================================================");
+        println!("");
+        println!("{}", board);
+        println!("");
+        println!("FEN: {}", board.fen());
+        print!("Last Move ({}): {}", board.active_color.invert(), r#move);
 
         if board.checkmate() {
-            println!("====================");
-            println!("{}", board);
-            println!("Checkmate!");
+            println!("Checkmate");
+            break;
+        } else if board.draw() {
+            println!("Draw");
             break;
         }
     }
 
+    Ok(())
+}
+
+fn random_game() -> Result<()> {
+    let mut board = Board::new();
+    println!("");
+    println!("============================================================");
+    println!("");
+    println!("{}", board);
+    println!("");
+    println!("FEN: {}", board.fen());
+
+    loop {
+        let legal_moves = board.legal_moves();
+
+        let r#move = legal_moves[random::<usize>() % legal_moves.len()];
+        print!(
+            "Play Move ({}): {}",
+            board.active_color,
+            r#move.to_uci_str()
+        );
+        board.apply_move(&r#move);
+
+        println!("");
+        println!("============================================================");
+        println!("");
+        println!("{}", board);
+        println!("");
+        println!("FEN: {}", board.fen());
+        println!(
+            "Last Move ({}): {}",
+            board.active_color.invert(),
+            r#move.to_uci_str()
+        );
+
+        if board.checkmate() {
+            println!("Checkmate");
+            break;
+        } else if board.draw() {
+            println!("Draw");
+            break;
+        }
+    }
     Ok(())
 }
 
@@ -87,17 +131,29 @@ fn parse_lichess_moves() -> Result<()> {
 
     let mut board = Board::new();
     let mut sum = 0;
+
+    println!("");
+    println!("============================================================");
+    println!("");
+    println!("{}", board);
+    println!("");
+    println!("FEN: {}", board.fen());
+
     moves.iter().skip(1).for_each(|w| {
         if sum == 2 {
             sum = 0;
             return;
         }
+        println!("Play Move ({}): {}", board.active_color, w);
         board.make_move(w);
-        println!("====================");
+
+        println!("");
+        println!("============================================================");
+        println!("");
         println!("{}", board);
-        println!("{}", board.legal_moves().len());
-        println!("{}", w);
-        println!("{}", board.fen());
+        println!("");
+        println!("FEN: {}", board.fen());
+        println!("Last Move ({}): {}", board.active_color.invert(), w);
         sum += 1;
     });
     Ok(())

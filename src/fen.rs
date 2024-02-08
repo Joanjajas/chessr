@@ -90,7 +90,7 @@ pub fn fen_to_board(fen_string: &str) -> Result<Board, FenParseError> {
 
     let en_passant = match *fen_blocks.get(3).ok_or(FenParseError::FenString)? {
         "-" => None,
-        s => Some(Square::from_algebraic(s).ok_or(FenParseError::EnPassant)?),
+        s => Some(Square::from_algebraic_str(s).ok_or(FenParseError::EnPassant)?),
     };
 
     // optional fields
@@ -133,7 +133,7 @@ pub fn board_to_fen(board: &Board) -> String {
                         empty_squares = 0;
                     }
 
-                    fen.push_str(&p.fen().to_string());
+                    fen.push_str(&p.to_fen_char().to_string());
                 }
                 None => empty_squares += 1,
             }
@@ -150,7 +150,7 @@ pub fn board_to_fen(board: &Board) -> String {
     fen.push(' ');
 
     // active color
-    fen.push_str(&board.active_color.fen().to_string());
+    fen.push_str(&board.active_color.to_fen_char().to_string());
     fen.push(' ');
 
     // castle rights
@@ -158,7 +158,7 @@ pub fn board_to_fen(board: &Board) -> String {
         fen.push('-');
     } else {
         for right in board.castle_rights.iter() {
-            fen.push_str(&right.fen().to_string());
+            fen.push_str(&right.to_fen_char().to_string());
         }
     }
 

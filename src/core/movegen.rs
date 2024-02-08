@@ -50,6 +50,7 @@ fn piece_legal_moves(piece: &Piece, src_square: Square, board: &Board) -> Vec<Mo
             }
 
             let r#move = Move {
+                color: board.active_color,
                 src_square: Some(src_square),
                 dst_square: Some(dst_square),
                 promotion: None,
@@ -150,6 +151,7 @@ fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
                 Piece::Knight(board.active_color),
             ] {
                 let r#move = Move {
+                    color: board.active_color,
                     src_square: Some(src_square),
                     dst_square: Some(dst_square),
                     promotion: Some(*promotion),
@@ -168,6 +170,7 @@ fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
         }
 
         let r#move = Move {
+            color: board.active_color,
             src_square: Some(src_square),
             dst_square: Some(dst_square),
             promotion: None,
@@ -235,6 +238,7 @@ pub fn castle_legal_moves(board: &Board) -> Vec<Move> {
     legal_moves
         .iter()
         .map(|castle| Move {
+            color: board.active_color,
             src_square: None,
             dst_square: None,
             promotion: None,
@@ -290,6 +294,7 @@ mod test {
         assert_eq!(
             pawn_legal_moves((4, 4).into(), &board)[0],
             Move {
+                color: Color::White,
                 src_square: Some((4, 4).into()),
                 dst_square: Some((3, 4).into()),
                 promotion: None,
@@ -319,6 +324,7 @@ mod test {
         assert_eq!(
             pawn_legal_moves((4, 0).into(), &board)[0],
             Move {
+                color: Color::White,
                 src_square: Some((4, 0).into()),
                 dst_square: Some((3, 0).into()),
                 promotion: None,
