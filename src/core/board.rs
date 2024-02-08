@@ -73,6 +73,20 @@ impl Board {
         fen::board_to_fen(self)
     }
 
+    /// Returns the squares from where the king is being checked.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use chessr::Board;
+    ///
+    /// let board = Board::from_fen("rnbqk1nr/ppp2ppp/4p3/3p4/1bPP4/5N2/PP2PPPP/RNBQKB1R w KQkq - 2 4").unwrap();
+    /// assert_eq!(board.checkers().len(), 1);
+    /// assert_eq!(board.checkers()[0].algebraic(), "b4");
+    pub fn checkers(&self) -> Vec<Square> {
+        self.square_attackers(self.king_square())
+    }
+
     /// Returns true if there is a check in the current position.
     ///
     /// # Examples
@@ -84,7 +98,7 @@ impl Board {
     /// assert_eq!(board.check(), true);
     /// ```
     pub fn check(&self) -> bool {
-        !self.square_attackers(self.king_square()).is_empty()
+        !self.checkers().is_empty()
     }
 
     /// Returns true if there is a checkmate in the current position.
@@ -287,8 +301,8 @@ impl Board {
         cloned_board.check()
     }
 
-    /// Returns the pieces of the opposite active color that are attacking the given square.
-    pub fn square_attackers(&self, src_square: Square) -> Vec<Piece> {
+    /// Returns the squares from where a given square is being attacked.
+    pub fn square_attackers(&self, src_square: Square) -> Vec<Square> {
         let mut attacking_pieces = Vec::new();
         let color = self.active_color.invert();
 
@@ -329,20 +343,19 @@ impl Board {
                         break;
                     }
 
-                    src_square += direction;
-
-                    if src_square_piece.is_none() {
-                        match piece {
-                            Piece::Queen(_) => continue,
-                            Piece::Rook(_) => continue,
-                            Piece::Bishop(_) => continue,
-                            Piece::Knight(_) => break,
-                            Piece::King(_) => break,
-                            Piece::Pawn(_) => break,
-                        }
+                    if src_square_piece.is_some() {
+                        attacking_pieces.push(src_square);
                     }
 
-                    attacking_pieces.push(*piece);
+                    src_square += direction;
+                    match piece {
+                        Piece::Queen(_) => continue,
+                        Piece::Rook(_) => continue,
+                        Piece::Bishop(_) => continue,
+                        Piece::Knight(_) => break,
+                        Piece::King(_) => break,
+                        Piece::Pawn(_) => break,
+                    }
                 }
             }
         }

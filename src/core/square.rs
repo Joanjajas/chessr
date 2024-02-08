@@ -22,18 +22,13 @@ impl Square {
     }
 
     /// Tries to convert a square into an algebraic notation string
-    pub fn algebraic(&self) -> Option<String> {
+    pub fn algebraic(&self) -> String {
         let (row, column) = (self.0, self.1);
-
-        if !(0..=7).contains(&row) || !(0..=7).contains(&column) {
-            return None;
-        }
 
         let row_char = 8 - row;
         let column_char = column as u8 + 97;
 
-        let algebraic = format!("{}{}", column_char as char, row_char);
-        Some(algebraic)
+        format!("{}{}", column_char as char, row_char)
     }
 }
 

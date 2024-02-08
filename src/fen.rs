@@ -167,8 +167,7 @@ pub fn board_to_fen(board: &Board) -> String {
     // en passant
     match board.en_passant {
         Some(square) => {
-            let algebraic = (square.algebraic()).unwrap_or("-".to_string());
-            fen.push_str(&algebraic);
+            fen.push_str(&square.algebraic());
         }
         None => fen.push('-'),
     }
