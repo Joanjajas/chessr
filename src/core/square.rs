@@ -1,11 +1,13 @@
+use std::fmt::Display;
+
 /// Represents a square on the board.
 /// The first element represents the row and the second element the column.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Square(pub usize, pub usize);
 
 impl Square {
-    /// Tries to convert an algebraic notation string into a square
-    pub fn from_algebraic(algebraic: &str) -> Option<Square> {
+    /// Tries to convert an string into a square
+    pub fn try_from_str(algebraic: &str) -> Option<Square> {
         let mut chars = algebraic.chars();
         let column_char = chars.next()?;
         let row_char = chars.next()?;
@@ -20,15 +22,16 @@ impl Square {
 
         Some((row, column).into())
     }
+}
 
-    /// Tries to convert a square into an algebraic notation string
-    pub fn algebraic(&self) -> String {
+impl Display for Square {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let (row, column) = (self.0, self.1);
 
         let row_char = 8 - row;
         let column_char = column as u8 + 97;
 
-        format!("{}{}", column_char as char, row_char)
+        write!(f, "{}{}", column_char as char, row_char)
     }
 }
 

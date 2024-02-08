@@ -1,13 +1,14 @@
 use crate::core::{Board, CastleKind, CastleRights, Color, Move, Piece, Square};
 
-/// Returns a vec of [Move] containing all possible legal moves in the current position.
+/// Returns a vec of [Move] containing all possible legal moves in the current
+/// position.
 pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
     let mut legal_moves = Vec::new();
 
     // piece moves
     for (row, col) in board.pieces.iter().enumerate() {
         for (col, piece) in col.iter().enumerate() {
-            if piece.is_some_and(|p| p.color() != &board.active_color) || piece.is_none() {
+            if piece.is_some_and(|p| p.color() != board.active_color) || piece.is_none() {
                 continue;
             }
 
@@ -24,7 +25,8 @@ pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
     legal_moves
 }
 
-/// Returns a vec of [Move] containing all possible legal moves for the given piece in the current position.
+/// Returns a vec of [Move] containing all possible legal moves for the given
+/// piece in the current position.
 fn piece_legal_moves(piece: &Piece, src_square: Square, board: &Board) -> Vec<Move> {
     let mut legal_moves = Vec::new();
 
@@ -43,7 +45,7 @@ fn piece_legal_moves(piece: &Piece, src_square: Square, board: &Board) -> Vec<Mo
             let dst_square_piece = board.get_piece(dst_square);
 
             // if the piece is the same color, we can't move there or beyond
-            if dst_square_piece.is_some_and(|p| p.color() == &board.active_color) {
+            if dst_square_piece.is_some_and(|p| p.color() == board.active_color) {
                 break;
             }
 
@@ -54,8 +56,9 @@ fn piece_legal_moves(piece: &Piece, src_square: Square, board: &Board) -> Vec<Mo
                 castle: None,
             };
 
-            // if the piece is the opposite color, we can move there and take it, but not beyond
-            if dst_square_piece.is_some_and(|p| p.color() != &board.active_color) {
+            // if the piece is the opposite color, we can move there and take it, but not
+            // beyond
+            if dst_square_piece.is_some_and(|p| p.color() != board.active_color) {
                 if !board.future_check(&r#move) {
                     legal_moves.push(r#move);
                 }
@@ -84,7 +87,8 @@ fn piece_legal_moves(piece: &Piece, src_square: Square, board: &Board) -> Vec<Mo
     legal_moves
 }
 
-/// Returns a vec of [Move] containing all possible legal moves for the given pawn in the current position.
+/// Returns a vec of [Move] containing all possible legal moves for the given
+/// pawn in the current position.
 fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
     let mut legal_moves = Vec::new();
     let piece = Piece::Pawn(board.active_color);
@@ -97,7 +101,8 @@ fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
             (src_square.1 as i8 + direction.1) as usize,
         );
 
-        // if the destination square is out of bounds, skip and continue with the next direction
+        // if the destination square is out of bounds, skip and continue with the next
+        // direction
         if !(0..=7).contains(&dst_square.0) || !(0..=7).contains(&dst_square.1) {
             continue;
         }
@@ -127,7 +132,7 @@ fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
             board.en_passant.is_some_and(|s| s != dst_square) || board.en_passant.is_none();
         let invalid_capture = direction.1 != 0
             && (dst_square_piece.is_none() && invalid_en_passant)
-            || dst_square_piece.is_some_and(|p| p.color() == &board.active_color);
+            || dst_square_piece.is_some_and(|p| p.color() == board.active_color);
 
         // if one of the conditions is met, skip and continue with the next direction
         if invalid_forward_move || invalid_two_square_move || invalid_capture {
@@ -178,7 +183,8 @@ fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
     legal_moves
 }
 
-/// Returns a vec of [Move] containing all possible castle legal moves for the current position.
+/// Returns a vec of [Move] containing all possible castle legal moves for the
+/// current position.
 pub fn castle_legal_moves(board: &Board) -> Vec<Move> {
     let mut legal_moves = Vec::new();
 

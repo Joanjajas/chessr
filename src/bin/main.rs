@@ -1,4 +1,5 @@
 use anyhow::Result;
+use rand::random;
 use std::fs::read_to_string;
 
 use chessr::Board;
@@ -31,6 +32,24 @@ fn run() -> Result<()> {
             Ok(())
         }
         "rep" => parse_lichess_moves(),
+        "rand" => {
+            let mut board = Board::new();
+            loop {
+                let moves = board.legal_moves();
+                if board.checkmate() || board.draw() {
+                    println!("====================");
+                    println!("{}", board);
+                    println!("Game over!");
+                    break;
+                }
+                let r#move = moves[random::<usize>() % moves.len()];
+                board.apply_move(&r#move);
+                println!("====================");
+                println!("{}", board);
+                println!("{}", board.fen());
+            }
+            Ok(())
+        }
         _ => Ok(()),
     }
 }
@@ -41,8 +60,9 @@ fn play(mut board: Board) -> Result<()> {
         println!("{}", board);
         let mut r#move = String::new();
         std::io::stdin().read_line(&mut r#move)?;
-        board.make_uci_move(r#move.trim());
+        board.make_move(r#move.trim());
         println!("{}", board.fen());
+        println!("{}", board.insufficient_material());
 
         if board.checkmate() {
             println!("====================");
@@ -72,7 +92,7 @@ fn parse_lichess_moves() -> Result<()> {
             sum = 0;
             return;
         }
-        board.make_algebraic_move(w);
+        board.make_move(w);
         println!("====================");
         println!("{}", board);
         println!("{}", board.legal_moves().len());

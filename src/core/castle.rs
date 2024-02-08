@@ -18,8 +18,8 @@ impl CastleKind {
     // Tries to create a castle kind from UCI notation.
     pub fn from_uci(uci: &str) -> Option<CastleKind> {
         match uci {
-            "e1g1" | "e8g8" => Some(CastleKind::Kingside),
-            "e1c1" | "e8c8" => Some(CastleKind::Queenside),
+            "e1g1" | "e8g8" | "e1-g1" | "e8-g8" => Some(CastleKind::Kingside),
+            "e1c1" | "e8c8" | "e1-c1" | "e8-c8" => Some(CastleKind::Queenside),
             _ => None,
         }
     }

@@ -17,14 +17,14 @@ pub enum Piece {
 
 impl Piece {
     /// Returns the color of the piece.
-    pub fn color(&self) -> &Color {
+    pub fn color(&self) -> Color {
         match self {
-            Piece::Pawn(color) => color,
-            Piece::Knight(color) => color,
-            Piece::Bishop(color) => color,
-            Piece::Rook(color) => color,
-            Piece::Queen(color) => color,
-            Piece::King(color) => color,
+            Piece::Pawn(color) => *color,
+            Piece::Knight(color) => *color,
+            Piece::Bishop(color) => *color,
+            Piece::Rook(color) => *color,
+            Piece::Queen(color) => *color,
+            Piece::King(color) => *color,
         }
     }
 
@@ -80,7 +80,20 @@ impl Piece {
 
     /// Tries to create a piece from an algebraic notation character.
     pub fn from_algebraic_char(c: char, color: Color) -> Option<Piece> {
-        match c.to_ascii_lowercase() {
+        match c {
+            'P' => Some(Piece::Pawn(color)),
+            'N' => Some(Piece::Knight(color)),
+            'B' => Some(Piece::Bishop(color)),
+            'R' => Some(Piece::Rook(color)),
+            'Q' => Some(Piece::Queen(color)),
+            'K' => Some(Piece::King(color)),
+            _ => None,
+        }
+    }
+
+    /// Tries to create a piece from a UCI protocol notation format character.
+    pub fn from_uci_char(c: char, color: Color) -> Option<Piece> {
+        match c {
             'p' => Some(Piece::Pawn(color)),
             'n' => Some(Piece::Knight(color)),
             'b' => Some(Piece::Bishop(color)),

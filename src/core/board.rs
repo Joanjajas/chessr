@@ -3,7 +3,9 @@ use crate::core::{movegen, CastleKind, CastleRights, Color, Move, Piece, Square}
 use crate::fen::{self, FenParseError};
 
 /// Represents a chess board.
-/// The board is represented as an 8x8 array of pieces. Each piece is an optional value, where `None` represents an empty square.
+///
+/// The board is represented as an 8x8 array of [Piece]. Each piece is an
+/// optional value, where `None` represents an empty square.
 #[derive(Debug, Clone)]
 pub struct Board {
     /// Piece placement representation on the board.
@@ -25,6 +27,7 @@ pub struct Board {
     pub fullmove_number: u32,
 }
 
+// TODO: threefold repetition
 impl Board {
     /// Creates a new board with the starting position.
     ///
@@ -34,21 +37,28 @@ impl Board {
     /// use chessr::Board;
     ///
     /// let board = Board::new();
-    /// assert_eq!(board.fen(), "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    /// assert_eq!(
+    ///     board.fen(),
+    ///     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    /// );
     /// ```
     pub fn new() -> Board {
         fen::fen_to_board(FEN_STARTING_POSITION).unwrap()
     }
 
-    /// Creates a FEN string representation of the current board.
-    /// [Forsyth–Edwards Notation](https://www.chess.com/terms/fen-chess) (FEN) is a standard notation for describing a particular board position of a chess game.
+    /// Creates a board from a FEN String.
+    ///
+    /// [Forsyth–Edwards Notation](https://www.chess.com/terms/fen-chess)
+    /// (FEN) is a standard notation for describing a particular board position
+    /// of a chess game.
     ///
     /// # Examples
     ///
     /// ```
     /// use chessr::Board;
     ///
-    /// pub const FEN_STARTING_POSITION: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    /// pub const FEN_STARTING_POSITION: &str =
+    ///     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     ///
     /// let board = Board::from_fen(FEN_STARTING_POSITION).unwrap();
     /// assert_eq!(board.fen(), FEN_STARTING_POSITION);
@@ -57,9 +67,11 @@ impl Board {
         fen::fen_to_board(fen_str)
     }
 
-    /// Creates a FEN string representation of the current the board.
-    /// [Forsyth–Edwards Notation](https://www.chess.com/terms/fen-chess) (FEN) is a standard notation for describing a particular board position of a chess game.
-    /// Creates a new board with the starting position.
+    /// Creates a FEN Utring representation of the current the board.
+    ///
+    /// [Forsyth–Edwards Notation](https://www.chess.com/terms/fen-chess)
+    /// (FEN) is a standard notation for describing a particular board position
+    /// of a chess game.
     ///
     /// # Examples
     ///
@@ -67,13 +79,17 @@ impl Board {
     /// use chessr::Board;
     ///
     /// let board = Board::new();
-    /// assert_eq!(board.fen(), "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    /// assert_eq!(
+    ///     board.fen(),
+    ///     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    /// );
     /// ```
     pub fn fen(&self) -> String {
         fen::board_to_fen(self)
     }
 
-    /// Returns the squares from where the king is being checked.
+    /// Returns a vector of all the pieces and their respective squares that
+    /// are checking the king in the current position.
     ///
     /// # Examples
     ///
@@ -82,8 +98,9 @@ impl Board {
     ///
     /// let board = Board::from_fen("rnbqk1nr/ppp2ppp/4p3/3p4/1bPP4/5N2/PP2PPPP/RNBQKB1R w KQkq - 2 4").unwrap();
     /// assert_eq!(board.checkers().len(), 1);
-    /// assert_eq!(board.checkers()[0].algebraic(), "b4");
-    pub fn checkers(&self) -> Vec<Square> {
+    /// assert_eq!(board.checkers()[0].0.fen(), 'b');
+    /// assert_eq!(board.checkers()[0].1.to_string(), "b4");
+    pub fn checkers(&self) -> Vec<(Piece, Square)> {
         self.square_attackers(self.king_square())
     }
 
@@ -94,7 +111,8 @@ impl Board {
     /// ```
     /// use chessr::Board;
     ///
-    /// let board = Board::from_fen("rnbqk1nr/ppp2ppp/4p3/3p4/1bPP4/5N2/PP2PPPP/RNBQKB1R w KQkq - 2 4").unwrap();
+    /// let board = Board::from_fen("rnbqk1nr/ppp2ppp/4p3/3p4/1bPP4/5N2/PP2PPPP/RNBQKB1R w KQkq - 2 4")
+    ///     .unwrap();
     /// assert_eq!(board.check(), true);
     /// ```
     pub fn check(&self) -> bool {
@@ -108,7 +126,8 @@ impl Board {
     /// ```
     /// use chessr::Board;
     ///
-    /// let board = Board::from_fen("rnb1kbnr/pppp1ppp/4p3/8/5PPq/8/PPPPP2P/RNBQKBNR w KQkq - 1 3").unwrap();
+    /// let board =
+    ///     Board::from_fen("rnb1kbnr/pppp1ppp/4p3/8/5PPq/8/PPPPP2P/RNBQKBNR w KQkq - 1 3").unwrap();
     /// assert_eq!(board.checkmate(), true);
     /// ```
     pub fn checkmate(&self) -> bool {
@@ -129,7 +148,8 @@ impl Board {
         !self.check() && self.legal_moves().is_empty()
     }
 
-    /// Returns true if 50 moves have been made without a pawn move or a capture.
+    /// Returns true if 50 moves have been made without a pawn move or a
+    /// capture.
     ///
     /// # Examples
     ///
@@ -143,9 +163,87 @@ impl Board {
         self.halfmove_clock >= 50
     }
 
-    /// Makes a move on the board given its [UCI notation](https://en.wikipedia.org/wiki/Universal_Chess_Interface).
-    /// If the move notation is invalid or the move is not legal, no move will be made.
-    /// Also returns the move that was made.
+    pub fn threefold_repetition(&self) -> bool {
+        unimplemented!()
+    }
+
+    /// Returns true if the current position is a draw by insufficient material.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use chessr::Board;
+    ///
+    /// let board = Board::from_fen("2k5/4b3/8/8/8/8/8/2K1B1B1 w - - 0 1").unwrap();
+    /// assert_eq!(board.insufficient_material(), true);
+    /// ```
+    pub fn insufficient_material(&self) -> bool {
+        let mut piece_count = 0;
+        let mut knights = Vec::new();
+        let mut bishops = Vec::new();
+
+        for (i, piece) in self.pieces.iter().flatten().enumerate() {
+            if let Some(piece) = piece {
+                match piece {
+                    Piece::Bishop(_) => {
+                        // because we need to know the color of the square in
+                        // which the bishops are, instead of pushing a piece
+                        // into the vector, we push the color of the square.
+                        let color = match i % 2 {
+                            0 => Color::White,
+                            _ => Color::Black,
+                        };
+                        bishops.push(color)
+                    }
+                    Piece::Knight(_) => knights.push(piece),
+                    _ => (),
+                }
+
+                piece_count += 1;
+            }
+        }
+
+        // king vs king
+        if piece_count == 2 {
+            return true;
+        }
+
+        // king and bishop vs king or king and knight vs king
+        if piece_count == 3 && (bishops.len() == 1 || knights.len() == 1) {
+            return true;
+        }
+
+        // king and bishop vs king and bishop with the bishops on the same color
+        // or king and any number of bishops vs king and any number of bishops
+        // in the same color
+        if piece_count == bishops.len() + 2 && bishops.windows(2).all(|c| c[0] == c[1]) {
+            return true;
+        }
+
+        false
+    }
+
+    /// Returns true if the current position is a draw.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use chessr::Board;
+    ///
+    /// let board = Board::from_fen("8/8/1k6/5K2/8/8/4N3/8 b - - 0 2").unwrap();
+    /// assert_eq!(board.draw(), true);
+    pub fn draw(&self) -> bool {
+        self.stalemate() || self.insufficient_material() || self.fifty_move_rule()
+    }
+
+    /// Makes a move on the board given its notation in [UCI](https://en.wikipedia.org/wiki/Universal_Chess_Interface)
+    /// protocol format notation. This method will accpedt either moves with
+    /// source and destination squares separated by a '-' or moves with source
+    /// and destination squares putted all together. Both "e2e4" and "e2-e4"
+    /// will be considered valid.
+    ///
+    /// If the move notation is invalid or the move is not legal, no move will
+    /// be applied. Also returns the move applied to the board.
     ///
     /// # Examples
     ///
@@ -153,15 +251,20 @@ impl Board {
     /// use chessr::Board;
     ///
     /// let mut board = Board::new();
-    /// board.make_uci_move("e2e4");
-    /// assert_eq!(board.fen(), "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+    /// let r#move = board.make_uci_move("e2e4");
+    ///
+    /// assert!(r#move.is_some());
+    /// assert_eq!(
+    ///     board.fen(),
+    ///     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+    /// );
     /// ```
     pub fn make_uci_move(&mut self, uci_str: &str) -> Option<Move> {
         let r#move = Move::from_uci(uci_str, self.active_color);
 
         if let Some(ref r#move) = r#move {
             if self.legal_moves().contains(r#move) {
-                self.make_move(r#move);
+                self.apply_move(r#move);
             }
         }
 
@@ -169,8 +272,8 @@ impl Board {
     }
 
     /// Makes a move on the board given its [algebraic notation](https://www.chess.com/terms/chess-notation).
-    /// If the move notation is invalid or the move is not legal, no move will be made.
-    /// Also returns the move that was made.
+    /// If the move notation is invalid or the move is not legal, no move will
+    /// be applied. Also returns the move that was applied.
     ///
     /// # Examples
     ///
@@ -178,22 +281,74 @@ impl Board {
     /// use chessr::Board;
     ///
     /// let mut board = Board::new();
-    /// board.make_algebraic_move("e4");
-    /// assert_eq!(board.fen(), "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+    /// let r#move = board.make_algebraic_move("e4");
+    ///
+    /// assert!(r#move.is_some());
+    /// assert_eq!(
+    ///     board.fen(),
+    ///     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+    /// );
     /// ```
     pub fn make_algebraic_move(&mut self, algebraic_str: &str) -> Option<Move> {
         let r#move = Move::from_algebraic(algebraic_str, self);
 
         if let Some(ref r#move) = r#move {
             if self.legal_moves().contains(r#move) {
-                self.make_move(r#move);
+                self.apply_move(r#move);
             }
         }
 
         r#move
     }
 
-    /// Returns a vec of [Move] containing all possible legal moves in the current position.
+    /// Tries to make a move, accepting both standard and non-standard algebraic
+    /// notation. For making UCI moves or SAN moves see
+    /// [make_uci_move()](crate::Board::make_uci_move())
+    /// and [make_algebraic_move()](crate::Board::make_algebraic_move())
+    /// functions.
+    ///
+    /// # Examples
+    /// ```
+    /// use chessr::Board;
+    ///
+    /// let mut board = Board::new();
+    ///
+    /// // Standard algebraic notation.
+    /// let r#move = board.make_move("e4");
+    /// assert_eq!(r#move.is_some(), true);
+    ///
+    /// // Long algebraic notation without '-'.
+    /// let r#move = board.make_move("e2e4");
+    /// assert_eq!(r#move.is_some(), true);
+    ///
+    /// // Long algebraic notation with '-'.
+    /// let r#move = board.make_move("e2-e4");
+    /// assert_eq!(r#move.is_some(), true);
+    /// ```
+    pub fn make_move(&mut self, move_str: &str) -> Option<Move> {
+        let uci_move = Move::from_uci(move_str, self.active_color);
+        if let Some(r#move) = uci_move {
+            if self.legal_moves().contains(&r#move) {
+                self.apply_move(&r#move);
+            }
+
+            return Some(r#move);
+        }
+
+        let algebraic_move = Move::from_algebraic(move_str, self);
+
+        if let Some(r#move) = algebraic_move {
+            if self.legal_moves().contains(&r#move) {
+                self.apply_move(&r#move);
+            }
+            return Some(r#move);
+        }
+
+        None
+    }
+
+    /// Returns a vec of [Move] containing all possible legal moves in the
+    /// current position.
     ///
     /// # Examples
     ///
@@ -207,22 +362,23 @@ impl Board {
         movegen::generate_legal_moves(self)
     }
 
-    /// Returns the piece located at the given square, if any.
-    /// If the square provided is out of bounds, the method will panic.
+    /// Returns the piece located at the given square, if any. If the square
+    /// provided is out of bounds, the method will panic.
     pub(crate) fn get_piece(&self, square: Square) -> Option<Piece> {
         self.pieces[square.0][square.1]
     }
 
-    /// Sets the piece at the given square.
-    /// To remove a piece from a square, pass `None` as the piece.
-    /// If the square provided is out of bounds, the method will panic.
+    /// Sets the piece at the given square. To remove a piece from a square,
+    /// pass `None` as the piece. If the square provided is out of bounds, the
+    /// method will panic.
     pub(crate) fn set_piece(&mut self, square: Square, piece: Option<Piece>) {
         self.pieces[square.0][square.1] = piece;
     }
 
-    /// Makes a move on the board, updating the board state.
-    /// This method assumes that the move is legal and valid, otherwise undefined behavior may occur.
-    pub(crate) fn make_move(&mut self, r#move: &Move) {
+    /// Applies a move on the board, updating the board state.
+    /// This method assumes that the move is legal and valid, otherwise
+    /// undefined behavior may occur.
+    pub fn apply_move(&mut self, r#move: &Move) {
         // handle castling
         if let Some(ref castle) = r#move.castle {
             match castle {
@@ -293,16 +449,17 @@ impl Board {
     }
 
     /// Returns if a given move will leave the king in check.
-    /// The move passed to this method should be legal and valid, otherwise undefined behavior may occur.
+    /// The move passed to this method is assumed to be legal and valid,
+    /// otherwise undefined behavior may occur.
     pub(crate) fn future_check(&self, r#move: &Move) -> bool {
         let mut cloned_board = self.clone();
-        cloned_board.make_move(r#move);
+        cloned_board.apply_move(r#move);
         cloned_board.active_color = cloned_board.active_color.invert();
         cloned_board.check()
     }
 
     /// Returns the squares from where a given square is being attacked.
-    pub fn square_attackers(&self, src_square: Square) -> Vec<Square> {
+    pub(crate) fn square_attackers(&self, src_square: Square) -> Vec<(Piece, Square)> {
         let mut attacking_pieces = Vec::new();
         let color = self.active_color.invert();
 
@@ -325,8 +482,9 @@ impl Board {
                 }
 
                 let mut src_square = match piece {
-                    // since in this method we are going from the square we are checking to the source square,
-                    // we need to invert the direction if the piece is a pawn.
+                    // since in this method we are going from the square we are checking to the
+                    // source square, we need to invert the direction if the
+                    // piece is a pawn.
                     Piece::Pawn(_) => Square(
                         (src_square.0 as i8 - direction.0) as usize,
                         (src_square.1 as i8 + direction.1) as usize,
@@ -344,7 +502,7 @@ impl Board {
                     }
 
                     if src_square_piece.is_some() {
-                        attacking_pieces.push(src_square);
+                        attacking_pieces.push((*piece, src_square));
                     }
 
                     src_square += direction;
@@ -416,7 +574,8 @@ impl Board {
 
     /// Updates the castle rights given a move.
     fn update_castle_rights(&mut self, r#move: &Move) {
-        // if the move is a castle, remove all castle rights for the current active color
+        // if the move is a castle, remove all castle rights for the current active
+        // color
         if r#move.castle.is_some() {
             match self.active_color {
                 Color::White => self.castle_rights.retain(|x| {
@@ -428,8 +587,9 @@ impl Board {
             }
         }
 
-        // if the move is a king move, remove all castle rights for the current active color or
-        // if the move is a rook move, remove the corresponding castle rights for the current active color
+        // if the move is a king move, remove all castle rights for the current active
+        // color or if the move is a rook move, remove the corresponding castle
+        // rights for the current active color
         if let Some(src_square) = r#move.src_square {
             let src_square_piece = self.get_piece(src_square);
 
