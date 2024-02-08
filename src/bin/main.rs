@@ -1,9 +1,9 @@
-use anyhow::Result;
-use rand::random;
 use std::fs::read_to_string;
 use std::io::{stdin, stdout, Write};
 
+use anyhow::Result;
 use chessr::Board;
+use rand::random;
 
 const STARTPOS: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -48,6 +48,7 @@ fn play(startpos: &str) -> Result<()> {
     println!("{}", board);
     println!("");
     println!("FEN: {}", board.fen());
+    println!("");
 
     loop {
         let mut r#move = String::new();
@@ -62,6 +63,7 @@ fn play(startpos: &str) -> Result<()> {
         println!("{}", board);
         println!("");
         println!("FEN: {}", board.fen());
+        println!("");
         print!("Last Move ({}): {}", board.active_color.invert(), r#move);
 
         if board.checkmate() {
@@ -84,6 +86,7 @@ fn random_game() -> Result<()> {
     println!("{}", board);
     println!("");
     println!("FEN: {}", board.fen());
+    println!("");
 
     loop {
         let legal_moves = board.legal_moves();
@@ -102,6 +105,7 @@ fn random_game() -> Result<()> {
         println!("{}", board);
         println!("");
         println!("FEN: {}", board.fen());
+        println!("");
         println!(
             "Last Move ({}): {}",
             board.active_color.invert(),
@@ -138,6 +142,7 @@ fn parse_lichess_moves() -> Result<()> {
     println!("{}", board);
     println!("");
     println!("FEN: {}", board.fen());
+    println!("");
 
     moves.iter().skip(1).for_each(|w| {
         if sum == 2 {
@@ -153,6 +158,7 @@ fn parse_lichess_moves() -> Result<()> {
         println!("{}", board);
         println!("");
         println!("FEN: {}", board.fen());
+        println!("");
         println!("Last Move ({}): {}", board.active_color.invert(), w);
         sum += 1;
     });

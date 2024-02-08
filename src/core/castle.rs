@@ -8,8 +8,8 @@ pub enum CastleKind {
 }
 
 impl CastleKind {
-    /// Tries to create a castle kind from algebraic notation.
-    pub fn from_algebraic_str(str: &str) -> Option<CastleKind> {
+    /// Tries to create a castle kind from the given SAN string.
+    pub fn from_san_str(str: &str) -> Option<CastleKind> {
         match str {
             "O-O" | "0-0" | "o-o" => Some(CastleKind::Kingside),
             "O-O-O" | "0-0-0" | "o-o-o" => Some(CastleKind::Queenside),
@@ -17,7 +17,7 @@ impl CastleKind {
         }
     }
 
-    /// Tries to create a castle kind from UCI notation.
+    /// Tries to create a castle kind from the given UCI notation string.
     pub fn from_uci_str(uci: &str) -> Option<CastleKind> {
         match uci {
             "e1g1" | "e8g8" | "e1-g1" | "e8-g8" => Some(CastleKind::Kingside),
@@ -26,7 +26,15 @@ impl CastleKind {
         }
     }
 
-    /// Returns an UCI representation of the castle kind.
+    /// Returns a SAN string of the castle kind.
+    pub fn to_san_str(&self) -> String {
+        match self {
+            CastleKind::Kingside => "O-O".to_string(),
+            CastleKind::Queenside => "O-O-O".to_string(),
+        }
+    }
+
+    /// Returns an UCI notation string of the castle kind.
     pub fn to_uci_str(&self, color: &Color) -> String {
         match self {
             CastleKind::Kingside => match color {

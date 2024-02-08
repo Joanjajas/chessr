@@ -35,8 +35,8 @@ impl Piece {
         }
     }
 
-    /// Tries to create a piece from an algebraic notation character.
-    pub fn from_algebraic_char(c: char, color: Color) -> Option<Piece> {
+    /// Tries to create a piece from a SAN character.
+    pub fn from_san_char(c: char, color: Color) -> Option<Piece> {
         match c {
             'P' => Some(Piece::Pawn(color)),
             'N' => Some(Piece::Knight(color)),
@@ -48,7 +48,7 @@ impl Piece {
         }
     }
 
-    /// Tries to create a piece from a UCI protocol notation format character.
+    /// Tries to create a piece from a UCI notation character.
     pub fn from_uci_char(c: char, color: Color) -> Option<Piece> {
         match c {
             'p' => Some(Piece::Pawn(color)),
@@ -79,7 +79,19 @@ impl Piece {
         }
     }
 
-    /// Returns an UCI representation of the piece.
+    /// Returns a SAN representation of the piece.
+    pub fn to_san_char(&self) -> char {
+        match self {
+            Piece::Pawn(_) => 'P',
+            Piece::Knight(_) => 'N',
+            Piece::Bishop(_) => 'B',
+            Piece::Rook(_) => 'R',
+            Piece::Queen(_) => 'Q',
+            Piece::King(_) => 'K',
+        }
+    }
+
+    /// Returns an UCI notation string representation of the piece.
     pub fn to_uci_char(&self) -> char {
         match self {
             Piece::Pawn(_) => 'p',

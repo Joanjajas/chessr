@@ -289,7 +289,7 @@ impl Board {
     ///     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
     /// );
     /// ```
-    pub fn make_algebraic_move(&mut self, algebraic_str: &str) -> Option<Move> {
+    pub fn make_san_move(&mut self, algebraic_str: &str) -> Option<Move> {
         let r#move = Move::from_algebraic(algebraic_str, self);
 
         if let Some(ref r#move) = r#move {
