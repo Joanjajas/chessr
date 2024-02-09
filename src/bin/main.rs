@@ -42,13 +42,13 @@ fn run() -> Result<()> {
 
 fn play(startpos: &str) -> Result<()> {
     let mut board = Board::from_fen(startpos)?;
-    println!("");
+    println!();
     println!("============================================================");
-    println!("");
+    println!();
     println!("{}", board);
-    println!("");
+    println!();
     println!("FEN: {}", board.fen());
-    println!("");
+    println!();
 
     loop {
         if board.checkmate() {
@@ -68,13 +68,13 @@ fn play(startpos: &str) -> Result<()> {
             continue;
         }
 
-        println!("");
+        println!();
         println!("============================================================");
-        println!("");
+        println!();
         println!("{}", board);
-        println!("");
+        println!();
         println!("FEN: {}", board.fen());
-        println!("");
+        println!();
         print!("Last Move ({}): {}", board.active_color.invert(), r#move);
     }
 
@@ -83,13 +83,13 @@ fn play(startpos: &str) -> Result<()> {
 
 fn random_game() -> Result<()> {
     let mut board = Board::new();
-    println!("");
+    println!();
     println!("============================================================");
-    println!("");
+    println!();
     println!("{}", board);
-    println!("");
+    println!();
     println!("FEN: {}", board.fen());
-    println!("");
+    println!();
 
     loop {
         if board.checkmate() {
@@ -109,13 +109,13 @@ fn random_game() -> Result<()> {
         );
         board.make_move(&r#move.to_uci_str());
 
-        println!("");
+        println!();
         println!("============================================================");
-        println!("");
+        println!();
         println!("{}", board);
-        println!("");
+        println!();
         println!("FEN: {}", board.fen());
-        println!("");
+        println!();
         println!(
             "Last Move ({}): {}",
             board.active_color.invert(),
@@ -138,13 +138,13 @@ fn parse_lichess_moves() -> Result<()> {
     let mut board = Board::new();
     let mut sum = 0;
 
-    println!("");
+    println!();
     println!("============================================================");
-    println!("");
+    println!();
     println!("{}", board);
-    println!("");
+    println!();
     println!("FEN: {}", board.fen());
-    println!("");
+    println!();
 
     moves.iter().skip(1).for_each(|w| {
         if sum == 2 {
@@ -154,13 +154,13 @@ fn parse_lichess_moves() -> Result<()> {
         println!("Play Move ({}): {}", board.active_color, w);
         board.make_move(w);
 
-        println!("");
+        println!();
         println!("============================================================");
-        println!("");
+        println!();
         println!("{}", board);
-        println!("");
+        println!();
         println!("FEN: {}", board.fen());
-        println!("");
+        println!();
         println!("Last Move ({}): {}", board.active_color.invert(), w);
         sum += 1;
     });
