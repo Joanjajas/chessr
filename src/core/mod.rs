@@ -11,4 +11,4 @@ pub use castle::{CastleKind, CastleRights};
 pub use color::Color;
 pub use piece::Piece;
 pub use r#move::Move;
-pub use square::Square;
+pub use square::SquareCoords;

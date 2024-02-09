@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::constants::FEN_STARTING_POSITION;
-use crate::core::{movegen, CastleKind, CastleRights, Color, Move, Piece, Square};
+use crate::core::{movegen, CastleKind, CastleRights, Color, Move, Piece, SquareCoords};
 use crate::fen::{self, FenParseError};
 
 /// Represents a chess board.
@@ -10,8 +10,9 @@ use crate::fen::{self, FenParseError};
 /// optional value, where `None` represents an empty square.
 #[derive(Debug, Clone)]
 pub struct Board {
-    /// Piece placement representation on the board.
-    pub pieces: [[Option<Piece>; 8]; 8],
+    /// Board squares represented either by a [Piece] or `None` if the square
+    /// is empty.
+    pub squares: [[Option<Piece>; 8]; 8],
 
     /// Color of the player who moves next.
     pub active_color: Color,
@@ -20,7 +21,7 @@ pub struct Board {
     pub castle_rights: Vec<CastleRights>,
 
     /// En passant target square.
-    pub en_passant_target: Option<Square>,
+    pub en_passant_target: Option<SquareCoords>,
 
     /// Number of moves since the last capture or pawn advance.
     pub halfmove_clock: u32,
@@ -105,7 +106,7 @@ impl Board {
     /// assert_eq!(board.checkers().len(), 1);
     /// assert_eq!(board.checkers()[0].0.to_fen_char(), 'b');
     /// assert_eq!(board.checkers()[0].1.to_string(), "b4");
-    pub fn checkers(&self) -> Vec<(Piece, Square)> {
+    pub fn checkers(&self) -> Vec<(Piece, SquareCoords)> {
         self.square_attackers(self.king_square())
     }
 
@@ -212,12 +213,13 @@ impl Board {
         let mut bishops = Vec::new();
 
         let mut row_offset = 0;
-        for (i, piece) in self.pieces.iter().flatten().enumerate() {
+        for (i, piece) in self.squares.iter().flatten().enumerate() {
             // the color for the first square in the row alternates for each row,
             // so we need to set an offset every time we reach the end of a row.
             if i % 8 == 0 && i != 0 {
                 row_offset += 1;
             }
+
             if let Some(piece) = piece {
                 match piece {
                     Piece::Bishop(_) => {
@@ -400,15 +402,15 @@ impl Board {
 
     /// Returns the piece located at the given square, if any. If the square
     /// provided is out of bounds, the method will panic.
-    pub(crate) fn get_piece(&self, square: Square) -> Option<Piece> {
-        self.pieces[square.0][square.1]
+    pub(crate) fn get_piece(&self, square_coords: SquareCoords) -> Option<Piece> {
+        self.squares[square_coords.0][square_coords.1]
     }
 
     /// Sets the piece at the given square. To remove a piece from a square,
     /// pass `None` as the piece. If the square provided is out of bounds, the
     /// method will panic.
-    pub(crate) fn set_piece(&mut self, square: Square, piece: Option<Piece>) {
-        self.pieces[square.0][square.1] = piece;
+    pub(crate) fn set_piece(&mut self, square_coords: SquareCoords, piece: Option<Piece>) {
+        self.squares[square_coords.0][square_coords.1] = piece;
     }
 
     /// Applies a move on the board, updating the board state.
@@ -465,8 +467,8 @@ impl Board {
                 && (dst_square.0 as i8 - src_square.0 as i8).abs() == 2
             {
                 let adjacent_squares = (
-                    Square(dst_square.0, (dst_square.1 as i8 + 1) as usize),
-                    Square(dst_square.0, (dst_square.1 as i8 - 1) as usize),
+                    SquareCoords(dst_square.0, (dst_square.1 as i8 + 1) as usize),
+                    SquareCoords(dst_square.0, (dst_square.1 as i8 - 1) as usize),
                 );
 
                 if (0..=7).contains(&adjacent_squares.0 .0)
@@ -518,8 +520,8 @@ impl Board {
         cloned_board.check()
     }
 
-    /// Returns the squares from where a given square is being attacked.
-    pub(crate) fn square_attackers(&self, src_square: Square) -> Vec<(Piece, Square)> {
+    /// Returns the pieces an its respectives squares from where a given square is being attacked.
+    pub(crate) fn square_attackers(&self, src_square: SquareCoords) -> Vec<(Piece, SquareCoords)> {
         let mut attacking_pieces = Vec::new();
         let color = self.active_color.invert();
 
@@ -545,11 +547,11 @@ impl Board {
                     // since in this method we are going from the square we are checking to the
                     // source square, we need to invert the direction if the
                     // piece is a pawn.
-                    Piece::Pawn(_) => Square(
+                    Piece::Pawn(_) => SquareCoords(
                         (src_square.0 as i8 - direction.0) as usize,
                         (src_square.1 as i8 + direction.1) as usize,
                     ),
-                    _ => Square(
+                    _ => SquareCoords(
                         (src_square.0 as i8 + direction.0) as usize,
                         (src_square.1 as i8 + direction.1) as usize,
                     ),
@@ -620,11 +622,11 @@ impl Board {
     }
 
     /// Returns the square of the current active color king.
-    fn king_square(&self) -> Square {
-        for (row, col) in self.pieces.iter().enumerate() {
+    fn king_square(&self) -> SquareCoords {
+        for (row, col) in self.squares.iter().enumerate() {
             for (col, piece) in col.iter().enumerate() {
                 if piece == &Some(Piece::King(self.active_color)) {
-                    return Square(row, col);
+                    return SquareCoords(row, col);
                 }
             }
         }
@@ -704,16 +706,16 @@ impl std::fmt::Display for Board {
 
         writeln!(f, "{}", fisrt_line)?;
 
-        for (i, row) in self.pieces.iter().enumerate() {
+        for (i, row) in self.squares.iter().enumerate() {
             write!(f, "│")?;
-            for (j, piece_option) in row.iter().enumerate() {
+            for (j, piece) in row.iter().enumerate() {
                 if j == 7 {
-                    match piece_option {
+                    match piece {
                         Some(piece) => write!(f, " {} │ {}", piece, rows[i]),
                         None => write!(f, "   │ {}", rows[i]),
                     }?;
                 } else {
-                    match piece_option {
+                    match piece {
                         Some(piece) => write!(f, " {} │", piece),
                         None => write!(f, "   │"),
                     }?;

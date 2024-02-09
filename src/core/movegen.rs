@@ -1,4 +1,4 @@
-use crate::core::{Board, CastleKind, CastleRights, Color, Move, Piece, Square};
+use crate::core::{Board, CastleKind, CastleRights, Color, Move, Piece, SquareCoords};
 
 /// Returns a vec of [Move] containing all possible legal moves in the current
 /// position.
@@ -6,7 +6,7 @@ pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
     let mut legal_moves = Vec::new();
 
     // piece moves
-    for (row, col) in board.pieces.iter().enumerate() {
+    for (row, col) in board.squares.iter().enumerate() {
         for (col, piece) in col.iter().enumerate() {
             if piece.is_some_and(|p| p.color() != board.active_color) || piece.is_none() {
                 continue;
@@ -27,7 +27,7 @@ pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
 
 /// Returns a vec of [Move] containing all possible legal moves for the given
 /// piece in the current position.
-fn legal_piece_moves(piece: &Piece, src_square: Square, board: &Board) -> Vec<Move> {
+fn legal_piece_moves(piece: &Piece, src_square: SquareCoords, board: &Board) -> Vec<Move> {
     let mut legal_moves = Vec::new();
 
     // handle pawn moves separately
@@ -36,7 +36,7 @@ fn legal_piece_moves(piece: &Piece, src_square: Square, board: &Board) -> Vec<Mo
     }
 
     for direction in piece.directions().iter() {
-        let mut dst_square = Square(
+        let mut dst_square = SquareCoords(
             (src_square.0 as i8 + direction.0) as usize,
             (src_square.1 as i8 + direction.1) as usize,
         );
@@ -90,14 +90,14 @@ fn legal_piece_moves(piece: &Piece, src_square: Square, board: &Board) -> Vec<Mo
 
 /// Returns a vec of [Move] containing all possible legal moves for the given
 /// pawn in the current position.
-fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
+fn pawn_legal_moves(src_square: SquareCoords, board: &Board) -> Vec<Move> {
     let mut legal_moves = Vec::new();
     let piece = Piece::Pawn(board.active_color);
 
     // we have 3 different kind of moves: forward, two square and capture.
     // depending on the color of the pawn the direction is positive or negative.
     for direction in piece.directions().iter() {
-        let dst_square = Square(
+        let dst_square = SquareCoords(
             (src_square.0 as i8 + direction.0) as usize,
             (src_square.1 as i8 + direction.1) as usize,
         );

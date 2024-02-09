@@ -1,5 +1,5 @@
 use crate::constants::*;
-use crate::core::{Board, CastleKind, Color, Piece, Square};
+use crate::core::{Board, CastleKind, Color, Piece, SquareCoords};
 
 use regex::Regex;
 
@@ -10,10 +10,10 @@ pub struct Move {
     pub color: Color,
 
     /// Source square of the piece moving
-    pub src_square: Option<Square>,
+    pub src_square: Option<SquareCoords>,
 
     /// Destination square of the piece moving
-    pub dst_square: Option<Square>,
+    pub dst_square: Option<SquareCoords>,
 
     /// Castle type
     pub castle: Option<CastleKind>,
@@ -60,8 +60,8 @@ impl Move {
             false => (&uci_str[0..2], &uci_str[2..4], uci_str.chars().nth(4)),
         };
 
-        let src_square = Square::from_san_str(src_square_str)?;
-        let dst_square = Square::from_san_str(dst_square_str)?;
+        let src_square = SquareCoords::from_san_str(src_square_str)?;
+        let dst_square = SquareCoords::from_san_str(dst_square_str)?;
         let castle = CastleKind::from_uci_str(uci_str);
         let promotion = match promotion_char {
             Some(char) => Some(Piece::from_uci_char(char, color)?),
@@ -108,7 +108,7 @@ impl Move {
         let re = Regex::new(PAWN_MOVE_REGEX).expect("Invalid pawn move regex");
 
         if re.is_match(r#move) {
-            let dst_square = Square::from_san_str(r#move)?;
+            let dst_square = SquareCoords::from_san_str(r#move)?;
             return algebraic_piece_move(
                 Piece::Pawn(board.active_color),
                 dst_square,
@@ -123,7 +123,7 @@ impl Move {
 
         if re.is_match(r#move) {
             let piece = Piece::from_san_char(r#move.chars().next()?, board.active_color)?;
-            let dst_square = Square::from_san_str(&r#move[1..])?;
+            let dst_square = SquareCoords::from_san_str(&r#move[1..])?;
 
             return algebraic_piece_move(piece, dst_square, None, None, board);
         }
@@ -135,7 +135,7 @@ impl Move {
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
             let piece = Piece::from_san_char(chars.next()?, board.active_color)?;
-            let dst_square = Square::from_san_str(&r#move[2..])?;
+            let dst_square = SquareCoords::from_san_str(&r#move[2..])?;
             let disambiguation_row = 7 - (chars.next()? as usize - 49);
 
             return algebraic_piece_move(piece, dst_square, Some(disambiguation_row), None, board);
@@ -148,7 +148,7 @@ impl Move {
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
             let piece = Piece::from_san_char(chars.next().unwrap(), board.active_color)?;
-            let dst_square = Square::from_san_str(&r#move[2..])?;
+            let dst_square = SquareCoords::from_san_str(&r#move[2..])?;
             let disambiguation_column = chars.next()? as usize - 97;
 
             return algebraic_piece_move(
@@ -167,8 +167,8 @@ impl Move {
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
             let piece = Piece::from_san_char(chars.next()?, board.active_color)?;
-            let dst_square = Square::from_san_str(&r#move[3..])?;
-            let src_square = Square::from_san_str(&r#move[1..3])?;
+            let dst_square = SquareCoords::from_san_str(&r#move[3..])?;
+            let src_square = SquareCoords::from_san_str(&r#move[1..3])?;
 
             return algebraic_piece_move(
                 piece,
@@ -183,7 +183,7 @@ impl Move {
         let re = Regex::new(PAWN_CAPTURE_REGEX).expect("Invalid pawn capture regex");
 
         if re.is_match(r#move) {
-            let dst_square = Square::from_san_str(&r#move[2..])?;
+            let dst_square = SquareCoords::from_san_str(&r#move[2..])?;
             let disambiguation_column = r#move.chars().nth(0)? as usize - 97;
 
             return algebraic_piece_move(
@@ -201,7 +201,7 @@ impl Move {
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
             let piece = Piece::from_san_char(chars.next()?, board.active_color)?;
-            let dst_square = Square::from_san_str(&r#move[2..])?;
+            let dst_square = SquareCoords::from_san_str(&r#move[2..])?;
 
             return algebraic_piece_move(piece, dst_square, None, None, board);
         }
@@ -213,7 +213,7 @@ impl Move {
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
             let piece = Piece::from_san_char(chars.next()?, board.active_color)?;
-            let dst_square = Square::from_san_str(&r#move[3..])?;
+            let dst_square = SquareCoords::from_san_str(&r#move[3..])?;
             let disambiguation_row = 7 - (chars.next()? as usize - 49);
 
             return algebraic_piece_move(piece, dst_square, Some(disambiguation_row), None, board);
@@ -226,7 +226,7 @@ impl Move {
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
             let piece = Piece::from_san_char(chars.next()?, board.active_color)?;
-            let dst_square = Square::from_san_str(&r#move[3..])?;
+            let dst_square = SquareCoords::from_san_str(&r#move[3..])?;
             let disambiguation_column = chars.next()? as usize - 97;
 
             return algebraic_piece_move(
@@ -245,8 +245,8 @@ impl Move {
         if re.is_match(r#move) {
             let mut chars = r#move.chars();
             let piece = Piece::from_san_char(chars.next()?, board.active_color)?;
-            let dst_square = Square::from_san_str(&r#move[4..])?;
-            let src_square = Square::from_san_str(&r#move[1..3])?;
+            let dst_square = SquareCoords::from_san_str(&r#move[4..])?;
+            let src_square = SquareCoords::from_san_str(&r#move[1..3])?;
 
             return algebraic_piece_move(
                 piece,
@@ -261,7 +261,7 @@ impl Move {
         let re = Regex::new(PAWN_PROMOTION_REGEX).expect("Invalid pawn promotion regex");
 
         if re.is_match(r#move) {
-            let dst_square = Square::from_san_str(&r#move[0..2])?;
+            let dst_square = SquareCoords::from_san_str(&r#move[0..2])?;
             let promotion_piece = Piece::from_san_char(r#move.chars().nth(3)?, board.active_color)?;
 
             let mut r#move = algebraic_piece_move(
@@ -284,7 +284,7 @@ impl Move {
             Regex::new(PAWN_CAPTURE_PROMOTION_REGEX).expect("Invalid pawn capture promotion regex");
 
         if re.is_match(r#move) {
-            let dst_square = Square::from_san_str(&r#move[2..4])?;
+            let dst_square = SquareCoords::from_san_str(&r#move[2..4])?;
             let disambiguation = r#move.chars().nth(0)? as usize - 97;
             let promotion_piece = Piece::from_san_char(r#move.chars().nth(5)?, board.active_color)?;
 
@@ -310,7 +310,7 @@ impl Move {
 /// Returns a move from algebraic notation data.
 fn algebraic_piece_move(
     piece: Piece,
-    dst_square: Square,
+    dst_square: SquareCoords,
     disambiguation_row: Option<usize>,
     disambiguation_column: Option<usize>,
     board: &Board,
@@ -322,7 +322,7 @@ fn algebraic_piece_move(
 
     let mut valid_moves = vec![];
     for direction in piece.directions().iter() {
-        let mut src_square = Square(
+        let mut src_square = SquareCoords(
             (dst_square.0 as i8 + direction.0) as usize,
             (dst_square.1 as i8 + direction.1) as usize,
         );
@@ -402,14 +402,14 @@ fn algebraic_piece_move(
 
 /// Returns a pawn move from algebraic notation data.
 fn algebraic_pawn_move(
-    dst_square: Square,
+    dst_square: SquareCoords,
     board: &Board,
     disambiguation_column: Option<usize>,
 ) -> Option<Move> {
     let piece = Piece::Pawn(board.active_color);
 
     for direction in piece.directions() {
-        let src_square = Square(
+        let src_square = SquareCoords(
             (dst_square.0 as i8 - direction.0) as usize,
             (dst_square.1 as i8 - direction.1) as usize,
         );
@@ -459,8 +459,8 @@ mod test {
             r#move,
             Some(Move {
                 color: Color::White,
-                src_square: Some(Square(6, 4)),
-                dst_square: Some(Square(4, 4)),
+                src_square: Some(SquareCoords(6, 4)),
+                dst_square: Some(SquareCoords(4, 4)),
                 promotion: None,
                 castle: None,
             })
@@ -485,8 +485,8 @@ mod test {
             r#move,
             Some(Move {
                 color: Color::Black,
-                src_square: Some(Square(1, 4)),
-                dst_square: Some(Square(0, 4)),
+                src_square: Some(SquareCoords(1, 4)),
+                dst_square: Some(SquareCoords(0, 4)),
                 promotion: Some(Piece::Queen(Color::Black)),
                 castle: None,
             })

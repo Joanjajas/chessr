@@ -1,4 +1,4 @@
-use crate::core::{Board, CastleRights, Color, Piece, Square};
+use crate::core::{Board, CastleRights, Color, Piece, SquareCoords};
 
 /// Represents errors that can occur when parsing a FEN string.
 #[derive(Debug)]
@@ -31,7 +31,7 @@ impl std::fmt::Display for FenParseError {
 /// Creates a new board from the given FEN string.
 /// [Forsyth–Edwards Notation](https://www.chess.com/terms/fen-chess) (FEN) is a standard notation for describing a particular board position of a chess game.
 pub fn fen_to_board(fen_string: &str) -> Result<Board, FenParseError> {
-    let mut pieces = [[None; 8]; 8];
+    let mut squares = [[None; 8]; 8];
     let fen_blocks: Vec<&str> = fen_string.split_whitespace().collect();
 
     // the FEN string should have at least 4 blocks and not more than 6
@@ -62,7 +62,7 @@ pub fn fen_to_board(fen_string: &str) -> Result<Board, FenParseError> {
 
             if c.is_ascii_alphabetic() {
                 let piece = Piece::from_fen_char(c).ok_or(FenParseError::PiecePositions)?;
-                pieces[i][col] = Some(piece);
+                squares[i][col] = Some(piece);
                 col += 1;
                 row_count += 1;
             }
@@ -90,7 +90,7 @@ pub fn fen_to_board(fen_string: &str) -> Result<Board, FenParseError> {
 
     let en_passant = match *fen_blocks.get(3).ok_or(FenParseError::FenString)? {
         "-" => None,
-        s => Some(Square::from_san_str(s).ok_or(FenParseError::EnPassant)?),
+        s => Some(SquareCoords::from_san_str(s).ok_or(FenParseError::EnPassant)?),
     };
 
     // optional fields
@@ -107,13 +107,13 @@ pub fn fen_to_board(fen_string: &str) -> Result<Board, FenParseError> {
     };
 
     Ok(Board {
-        pieces,
+        squares,
         active_color,
         castle_rights,
         en_passant_target: en_passant,
         halfmove_clock,
         fullmove_number,
-        position_history: vec![fen_string.to_string()],
+        position_history: vec![fen_string.into()],
     })
 }
 
@@ -123,7 +123,7 @@ pub fn board_to_fen(board: &Board) -> String {
     let mut fen = String::new();
 
     // piece placement
-    for row in board.pieces.iter() {
+    for row in board.squares.iter() {
         let mut empty_squares = 0;
 
         for piece in row.iter() {
