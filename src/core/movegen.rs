@@ -129,8 +129,8 @@ fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
                 || dst_square_piece.is_some());
 
         // check if is a capture move and is valid
-        let invalid_en_passant =
-            board.en_passant.is_some_and(|s| s != dst_square) || board.en_passant.is_none();
+        let invalid_en_passant = board.en_passant_target.is_some_and(|s| s != dst_square)
+            || board.en_passant_target.is_none();
         let invalid_capture = direction.1 != 0
             && (dst_square_piece.is_none() && invalid_en_passant)
             || dst_square_piece.is_some_and(|p| p.color() == board.active_color);

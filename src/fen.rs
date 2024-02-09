@@ -110,9 +110,10 @@ pub fn fen_to_board(fen_string: &str) -> Result<Board, FenParseError> {
         pieces,
         active_color,
         castle_rights,
-        en_passant,
+        en_passant_target: en_passant,
         halfmove_clock,
         fullmove_number,
+        position_history: vec![fen_string.to_string()],
     })
 }
 
@@ -165,7 +166,7 @@ pub fn board_to_fen(board: &Board) -> String {
     fen.push(' ');
 
     // en passant
-    match board.en_passant {
+    match board.en_passant_target {
         Some(square) => {
             fen.push_str(&square.to_string());
         }

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::constants::FEN_STARTING_POSITION;
 use crate::core::{movegen, CastleKind, CastleRights, Color, Move, Piece, Square};
 use crate::fen::{self, FenParseError};
@@ -18,16 +20,19 @@ pub struct Board {
     pub castle_rights: Vec<CastleRights>,
 
     /// En passant target square.
-    pub en_passant: Option<Square>,
+    pub en_passant_target: Option<Square>,
 
     /// Number of moves since the last capture or pawn advance.
     pub halfmove_clock: u32,
 
     /// Number of completed turns in the game.
     pub fullmove_number: u32,
+
+    /// History of the board's positions.
+    pub position_history: Vec<String>,
 }
 
-// TODO: threefold repetition, PGN, replay games.
+// TODO: PGN, replay games.
 impl Board {
     /// Creates a new board with the starting position.
     ///
@@ -163,8 +168,32 @@ impl Board {
         self.halfmove_clock >= 50
     }
 
+    /// Returns true if the current position is a draw by threefold repetition.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use chessr::Board;
+    ///
+    /// let mut board = Board::new();
+    ///
+    /// for r#move in &[
+    ///     "e4", "e5", "Nf3", "Nf6", "Ng1", "Ng8", "Nf3", "Nf6", "Ng1", "Ng8",
+    /// ] {
+    ///     board.make_move(r#move);
+    /// }
+    ///
+    /// assert_eq!(board.threefold_repetition(), true);
+    /// ```
     pub fn threefold_repetition(&self) -> bool {
-        unimplemented!()
+        let mut hash_map = HashMap::new();
+
+        for pos in &self.position_history {
+            let pos: String = pos.split_whitespace().take(4).collect();
+            *hash_map.entry(pos).or_insert(0) += 1;
+        }
+
+        hash_map.iter().any(|(_, &count)| count >= 3)
     }
 
     /// Returns true if the current position is a draw by insufficient material.
@@ -239,7 +268,10 @@ impl Board {
     /// let board = Board::from_fen("8/8/1k6/5K2/8/8/4N3/8 b - - 0 2").unwrap();
     /// assert_eq!(board.draw(), true);
     pub fn draw(&self) -> bool {
-        self.stalemate() || self.insufficient_material() || self.fifty_move_rule()
+        self.stalemate()
+            || self.insufficient_material()
+            || self.fifty_move_rule()
+            || self.threefold_repetition()
     }
 
     /// Makes a move on the board given its notation in [UCI](https://en.wikipedia.org/wiki/Universal_Chess_Interface)
@@ -262,7 +294,7 @@ impl Board {
     /// assert!(r#move.is_some());
     /// assert_eq!(
     ///     board.fen(),
-    ///     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+    ///     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
     /// );
     /// ```
     pub fn make_uci_move(&mut self, uci_str: &str) -> Option<Move> {
@@ -292,7 +324,7 @@ impl Board {
     /// assert!(r#move.is_some());
     /// assert_eq!(
     ///     board.fen(),
-    ///     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+    ///     "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
     /// );
     /// ```
     pub fn make_san_move(&mut self, algebraic_str: &str) -> Option<Move> {
@@ -310,7 +342,7 @@ impl Board {
     /// Tries to make a move, accepting both standard and non-standard algebraic
     /// notation. For making UCI moves or SAN moves see
     /// [make_uci_move()](crate::Board::make_uci_move())
-    /// and [make_algebraic_move()](crate::Board::make_algebraic_move())
+    /// and [make_san_move()](crate::Board::make_san_move())
     /// functions.
     ///
     /// # Examples
@@ -324,11 +356,11 @@ impl Board {
     /// assert_eq!(r#move.is_some(), true);
     ///
     /// // Long algebraic notation without '-'.
-    /// let r#move = board.make_move("e2e4");
+    /// let r#move = board.make_move("e7e5");
     /// assert_eq!(r#move.is_some(), true);
     ///
     /// // Long algebraic notation with '-'.
-    /// let r#move = board.make_move("e2-e4");
+    /// let r#move = board.make_move("f1-c4");
     /// assert_eq!(r#move.is_some(), true);
     /// ```
     pub fn make_move(&mut self, move_str: &str) -> Option<Move> {
@@ -393,13 +425,10 @@ impl Board {
 
         // handle normal move
         if let (Some(src_square), Some(dst_square)) = (r#move.src_square, r#move.dst_square) {
-            // update castle rights before updating the board state
-            self.update_castle_rights(r#move);
-
             // handle en pasant capture
-            let en_passant_capture = self.en_passant.is_some_and(|s| s == dst_square);
+            let en_passant_capture = self.en_passant_target.is_some_and(|s| s == dst_square);
             if en_passant_capture {
-                let en_passant_square = self.en_passant.unwrap();
+                let en_passant_square = self.en_passant_target.unwrap();
 
                 // calculate the square in which the en passant target is located
                 let en_passant_capture_square = match self.active_color {
@@ -431,20 +460,47 @@ impl Board {
 
             self.set_piece(src_square, None);
 
-            // update en passant square
-            self.en_passant = if src_square_piece == Some(Piece::Pawn(self.active_color))
-                && (src_square.0 == 1 || src_square.0 == 6)
+            // update en passant target square
+            if src_square_piece == Some(Piece::Pawn(self.active_color))
                 && (dst_square.0 as i8 - src_square.0 as i8).abs() == 2
             {
-                match self.active_color {
-                    Color::Black => Some((dst_square.0 - 1, dst_square.1).into()),
-                    Color::White => Some((dst_square.0 + 1, dst_square.1).into()),
+                let adjacent_squares = (
+                    Square(dst_square.0, (dst_square.1 as i8 + 1) as usize),
+                    Square(dst_square.0, (dst_square.1 as i8 - 1) as usize),
+                );
+
+                if (0..=7).contains(&adjacent_squares.0 .0)
+                    && (0..=7).contains(&adjacent_squares.0 .1)
+                    && (0..=7).contains(&adjacent_squares.1 .0)
+                    && (0..=7).contains(&adjacent_squares.1 .1)
+                {
+                    let adjacent_squares_pieces = (
+                        self.get_piece(adjacent_squares.0),
+                        self.get_piece(adjacent_squares.1),
+                    );
+
+                    if adjacent_squares_pieces
+                        .0
+                        .is_some_and(|p| p == Piece::Pawn(self.active_color.invert()))
+                        || adjacent_squares_pieces
+                            .1
+                            .is_some_and(|p| p == Piece::Pawn(self.active_color.invert()))
+                    {
+                        self.en_passant_target = {
+                            match self.active_color {
+                                Color::Black => Some((dst_square.0 - 1, dst_square.1).into()),
+                                Color::White => Some((dst_square.0 + 1, dst_square.1).into()),
+                            }
+                        }
+                    }
                 }
             } else {
-                None
-            };
+                self.en_passant_target = None;
+            }
         }
 
+        self.update_castle_rights(r#move);
+        self.position_history.push(self.fen());
         self.active_color = self.active_color.invert();
         self.fullmove_number += match self.active_color {
             Color::White => 1,
@@ -578,8 +634,7 @@ impl Board {
 
     /// Updates the castle rights given a move.
     fn update_castle_rights(&mut self, r#move: &Move) {
-        // if the move is a castle, remove all castle rights for the current active
-        // color
+        // castling move
         if r#move.castle.is_some() {
             match self.active_color {
                 Color::White => self.castle_rights.retain(|x| {
@@ -591,47 +646,50 @@ impl Board {
             }
         }
 
-        // if the move is a king move, remove all castle rights for the current active
-        // color or if the move is a rook move, remove the corresponding castle
-        // rights for the current active color
-        if let Some(src_square) = r#move.src_square {
-            let src_square_piece = self.get_piece(src_square);
+        // white king moves
+        if r#move.src_square.is_some_and(|s| s == (7, 4)) {
+            self.castle_rights.retain(|x| {
+                x != &CastleRights::WhiteKingside && x != &CastleRights::WhiteQueenside
+            });
+        }
 
-            match src_square_piece {
-                Some(Piece::King(Color::White)) => {
-                    self.castle_rights.retain(|x| {
-                        x != &CastleRights::WhiteKingside && x != &CastleRights::WhiteQueenside
-                    });
-                }
+        // black king moves
+        if r#move.src_square.is_some_and(|s| s == (0, 4)) {
+            self.castle_rights.retain(|x| {
+                x != &CastleRights::BlackKingside && x != &CastleRights::BlackQueenside
+            });
+        }
 
-                Some(Piece::King(Color::Black)) => {
-                    self.castle_rights.retain(|x| {
-                        x != &CastleRights::BlackKingside && x != &CastleRights::BlackQueenside
-                    });
-                }
+        // white kingside rook moves or is captured
+        if r#move.src_square.is_some_and(|s| s == (7, 7))
+            || r#move.dst_square.is_some_and(|s| s == (7, 7))
+        {
+            self.castle_rights
+                .retain(|x| x != &CastleRights::WhiteKingside);
+        }
 
-                Some(Piece::Rook(Color::White)) => {
-                    if src_square == (7, 7) {
-                        self.castle_rights
-                            .retain(|x| x != &CastleRights::WhiteKingside);
-                    } else if src_square == (7, 0) {
-                        self.castle_rights
-                            .retain(|x| x != &CastleRights::WhiteQueenside);
-                    }
-                }
+        // white queenside rook moves or is captured
+        if r#move.src_square.is_some_and(|s| s == (7, 0))
+            || r#move.dst_square.is_some_and(|s| s == (7, 0))
+        {
+            self.castle_rights
+                .retain(|x| x != &CastleRights::WhiteQueenside);
+        }
 
-                Some(Piece::Rook(Color::Black)) => {
-                    if src_square == (0, 7) {
-                        self.castle_rights
-                            .retain(|x| x != &CastleRights::BlackKingside);
-                    } else if src_square == (0, 0) {
-                        self.castle_rights
-                            .retain(|x| x != &CastleRights::BlackQueenside);
-                    }
-                }
+        // black kingside rook moves or is captured
+        if r#move.src_square.is_some_and(|s| s == (0, 7))
+            || r#move.dst_square.is_some_and(|s| s == (0, 7))
+        {
+            self.castle_rights
+                .retain(|x| x != &CastleRights::BlackKingside);
+        }
 
-                _ => {}
-            }
+        // black queenside rook moves or is captured
+        if r#move.src_square.is_some_and(|s| s == (0, 0))
+            || r#move.dst_square.is_some_and(|s| s == (0, 0))
+        {
+            self.castle_rights
+                .retain(|x| x != &CastleRights::BlackQueenside);
         }
     }
 }
