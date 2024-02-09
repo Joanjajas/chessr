@@ -89,7 +89,7 @@ impl Move {
     /// Returns a [Move] struct representation of the given move in standard
     /// algebraic notation. Will return a move when it is valid even if it
     /// is illegal.
-    pub fn from_algebraic(r#move: &str, board: &Board) -> Option<Move> {
+    pub fn from_san(r#move: &str, board: &Board) -> Option<Move> {
         // castling
         let re = Regex::new(CASTLE_REGEX).expect("Invalid castle regex");
 

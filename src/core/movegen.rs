@@ -12,14 +12,14 @@ pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
                 continue;
             }
 
-            let mut piece_legal_moves =
-                piece_legal_moves(&piece.unwrap(), (row, col).into(), board);
-            legal_moves.append(&mut piece_legal_moves);
+            let mut legal_piece_moves =
+                legal_piece_moves(&piece.unwrap(), (row, col).into(), board);
+            legal_moves.append(&mut legal_piece_moves);
         }
     }
 
     // castle moves
-    let mut legal_castle_moves = castle_legal_moves(board);
+    let mut legal_castle_moves = legal_castle_moves(board);
     legal_moves.append(&mut legal_castle_moves);
 
     legal_moves
@@ -27,7 +27,7 @@ pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
 
 /// Returns a vec of [Move] containing all possible legal moves for the given
 /// piece in the current position.
-fn piece_legal_moves(piece: &Piece, src_square: Square, board: &Board) -> Vec<Move> {
+fn legal_piece_moves(piece: &Piece, src_square: Square, board: &Board) -> Vec<Move> {
     let mut legal_moves = Vec::new();
 
     // handle pawn moves separately
@@ -188,7 +188,7 @@ fn pawn_legal_moves(src_square: Square, board: &Board) -> Vec<Move> {
 
 /// Returns a vec of [Move] containing all possible castle legal moves for the
 /// current position.
-pub fn castle_legal_moves(board: &Board) -> Vec<Move> {
+pub fn legal_castle_moves(board: &Board) -> Vec<Move> {
     let mut legal_moves = Vec::new();
 
     match board.active_color {
@@ -353,14 +353,14 @@ mod test {
         // king can't move
         let mut board = Board::from_fen("R7/2p5/8/2k3p1/1r6/K1P5/PP6/8 w - - 6 43").unwrap();
         assert_eq!(
-            piece_legal_moves(&Piece::King(Color::White), (5, 0).into(), &board).len(),
+            legal_piece_moves(&Piece::King(Color::White), (5, 0).into(), &board).len(),
             0
         );
 
         // king under check
         board = Board::from_fen("5R2/2p5/8/2k3p1/r7/K1P5/PP6/8 w - - 8 44").unwrap();
         assert_eq!(
-            piece_legal_moves(&Piece::King(Color::White), (5, 0).into(), &board).len(),
+            legal_piece_moves(&Piece::King(Color::White), (5, 0).into(), &board).len(),
             2
         );
 
@@ -368,7 +368,7 @@ mod test {
         board = Board::from_fen("rnbqk1nr/1pppbppp/p7/8/4QB2/P7/1PP1PPPP/RN2KBNR b KQkq - 3 5")
             .unwrap();
         assert_eq!(
-            piece_legal_moves(&Piece::Bishop(Color::Black), (1, 4).into(), &board).len(),
+            legal_piece_moves(&Piece::Bishop(Color::Black), (1, 4).into(), &board).len(),
             0
         );
     }
@@ -379,22 +379,22 @@ mod test {
         let mut board =
             Board::from_fen("r3k2r/ppp2ppp/2n1b3/3p4/3P4/2N1B3/PPP2PPP/R3K2R w KQkq - 0 1")
                 .unwrap();
-        assert_eq!(castle_legal_moves(&board).len(), 2);
+        assert_eq!(legal_castle_moves(&board).len(), 2);
         assert_eq!(
-            castle_legal_moves(&board)[0].castle,
+            legal_castle_moves(&board)[0].castle,
             Some(CastleKind::Kingside)
         );
         assert_eq!(
-            castle_legal_moves(&board)[1].castle,
+            legal_castle_moves(&board)[1].castle,
             Some(CastleKind::Queenside)
         );
 
         // black kingside
         board = Board::from_fen("r3k2r/ppp2ppp/2n1b3/3p2B1/3P4/2N5/PPP2PPP/R3K2R b KQkq - 1 1")
             .unwrap();
-        assert_eq!(castle_legal_moves(&board).len(), 1);
+        assert_eq!(legal_castle_moves(&board).len(), 1);
         assert_eq!(
-            castle_legal_moves(&board)[0].castle,
+            legal_castle_moves(&board)[0].castle,
             Some(CastleKind::Kingside)
         );
 
@@ -402,9 +402,9 @@ mod test {
         board =
             Board::from_fen("r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
                 .unwrap();
-        assert_eq!(castle_legal_moves(&board).len(), 1);
+        assert_eq!(legal_castle_moves(&board).len(), 1);
         assert_eq!(
-            castle_legal_moves(&board)[0].castle,
+            legal_castle_moves(&board)[0].castle,
             Some(CastleKind::Kingside)
         );
 
@@ -412,9 +412,9 @@ mod test {
         board =
             Board::from_fen("r3kbnr/ppp1pppp/2nq4/3p4/3P2b1/P4N2/1PP1PPPP/RNBQKB1R b KQkq - 0 5")
                 .unwrap();
-        assert_eq!(castle_legal_moves(&board).len(), 1);
+        assert_eq!(legal_castle_moves(&board).len(), 1);
         assert_eq!(
-            castle_legal_moves(&board)[0].castle,
+            legal_castle_moves(&board)[0].castle,
             Some(CastleKind::Queenside)
         );
     }

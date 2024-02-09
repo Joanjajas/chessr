@@ -16,7 +16,7 @@ fn main() {
 
 fn run() -> Result<()> {
     let mut input = String::new();
-    print!("Select a move (FEN, rand, rep, new): ");
+    print!("Select a mode (fen, rand, rep, new): ");
     stdout().flush()?;
     stdin().read_line(&mut input)?;
 
@@ -63,7 +63,10 @@ fn play(startpos: &str) -> Result<()> {
         print!("Play Move ({}): {}", board.active_color, r#move);
         stdout().flush()?;
         stdin().read_line(&mut r#move)?;
-        board.make_move(r#move.trim());
+        let made_move = board.make_move(r#move.trim());
+        if made_move.is_none() {
+            continue;
+        }
 
         println!("");
         println!("============================================================");

@@ -27,7 +27,7 @@ pub struct Board {
     pub fullmove_number: u32,
 }
 
-// TODO: threefold repetition
+// TODO: threefold repetition, PGN, replay games.
 impl Board {
     /// Creates a new board with the starting position.
     ///
@@ -287,7 +287,7 @@ impl Board {
     /// use chessr::Board;
     ///
     /// let mut board = Board::new();
-    /// let r#move = board.make_algebraic_move("e4");
+    /// let r#move = board.make_san_move("e4");
     ///
     /// assert!(r#move.is_some());
     /// assert_eq!(
@@ -296,7 +296,7 @@ impl Board {
     /// );
     /// ```
     pub fn make_san_move(&mut self, algebraic_str: &str) -> Option<Move> {
-        let r#move = Move::from_algebraic(algebraic_str, self);
+        let r#move = Move::from_san(algebraic_str, self);
 
         if let Some(ref r#move) = r#move {
             if self.legal_moves().contains(r#move) {
@@ -332,22 +332,20 @@ impl Board {
     /// assert_eq!(r#move.is_some(), true);
     /// ```
     pub fn make_move(&mut self, move_str: &str) -> Option<Move> {
-        let uci_move = Move::from_uci(move_str, self.active_color);
-        if let Some(r#move) = uci_move {
+        // try to parse the move as UCI.
+        if let Some(r#move) = Move::from_uci(move_str, self.active_color) {
             if self.legal_moves().contains(&r#move) {
                 self.apply_move(&r#move);
+                return Some(r#move);
             }
-
-            return Some(r#move);
         }
 
-        let algebraic_move = Move::from_algebraic(move_str, self);
-
-        if let Some(r#move) = algebraic_move {
+        // try to parse the move as SAN.
+        if let Some(r#move) = Move::from_san(move_str, self) {
             if self.legal_moves().contains(&r#move) {
                 self.apply_move(&r#move);
+                return Some(r#move);
             }
-            return Some(r#move);
         }
 
         None
