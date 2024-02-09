@@ -182,14 +182,20 @@ impl Board {
         let mut knights = Vec::new();
         let mut bishops = Vec::new();
 
+        let mut row_offset = 0;
         for (i, piece) in self.pieces.iter().flatten().enumerate() {
+            // the color for the first square in the row alternates for each row,
+            // so we need to set an offset every time we reach the end of a row.
+            if i % 8 == 0 && i != 0 {
+                row_offset += 1;
+            }
             if let Some(piece) = piece {
                 match piece {
                     Piece::Bishop(_) => {
                         // because we need to know the color of the square in
                         // which the bishops are, instead of pushing a piece
                         // into the vector, we push the color of the square.
-                        let color = match i % 2 {
+                        let color = match (i + row_offset) % 2 {
                             0 => Color::White,
                             _ => Color::Black,
                         };

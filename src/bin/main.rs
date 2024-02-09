@@ -51,6 +51,14 @@ fn play(startpos: &str) -> Result<()> {
     println!("");
 
     loop {
+        if board.checkmate() {
+            println!("Checkmate");
+            break;
+        } else if board.draw() {
+            println!("Draw");
+            break;
+        }
+
         let mut r#move = String::new();
         print!("Play Move ({}): {}", board.active_color, r#move);
         stdout().flush()?;
@@ -65,14 +73,6 @@ fn play(startpos: &str) -> Result<()> {
         println!("FEN: {}", board.fen());
         println!("");
         print!("Last Move ({}): {}", board.active_color.invert(), r#move);
-
-        if board.checkmate() {
-            println!("Checkmate");
-            break;
-        } else if board.draw() {
-            println!("Draw");
-            break;
-        }
     }
 
     Ok(())
@@ -89,8 +89,15 @@ fn random_game() -> Result<()> {
     println!("");
 
     loop {
-        let legal_moves = board.legal_moves();
+        if board.checkmate() {
+            println!("Checkmate");
+            break;
+        } else if board.draw() {
+            println!("Draw");
+            break;
+        }
 
+        let legal_moves = board.legal_moves();
         let r#move = legal_moves[random::<usize>() % legal_moves.len()];
         println!(
             "Play Move ({}): {}",
@@ -111,14 +118,6 @@ fn random_game() -> Result<()> {
             board.active_color.invert(),
             r#move.to_uci_str()
         );
-
-        if board.checkmate() {
-            println!("Checkmate");
-            break;
-        } else if board.draw() {
-            println!("Draw");
-            break;
-        }
     }
     Ok(())
 }
