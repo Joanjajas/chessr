@@ -123,10 +123,10 @@ pub fn board_to_fen(board: &Board) -> String {
     let mut fen = String::new();
 
     // piece placement
-    for row in board.squares.iter() {
+    for row in &board.squares {
         let mut empty_squares = 0;
 
-        for piece in row.iter() {
+        for &piece in row {
             match piece {
                 Some(p) => {
                     if empty_squares > 0 {
@@ -158,7 +158,7 @@ pub fn board_to_fen(board: &Board) -> String {
     if board.castle_rights.is_empty() {
         fen.push('-');
     } else {
-        for right in board.castle_rights.iter() {
+        for right in &board.castle_rights {
             fen.push_str(&right.to_fen_char().to_string());
         }
     }

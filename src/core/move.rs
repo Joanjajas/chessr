@@ -333,7 +333,7 @@ fn algebraic_piece_move(
     }
 
     let mut valid_moves = vec![];
-    for direction in piece.directions().iter() {
+    for direction in &piece.directions() {
         let mut src_square = SquareCoords(
             (dst_square.0 as i8 + direction.0) as usize,
             (dst_square.1 as i8 + direction.1) as usize,
@@ -419,7 +419,7 @@ fn algebraic_pawn_move(
 ) -> Option<Move> {
     let piece = Piece::Pawn(board.active_color);
 
-    for direction in piece.directions() {
+    for direction in &piece.directions() {
         let src_square = SquareCoords(
             (dst_square.0 as i8 - direction.0) as usize,
             (dst_square.1 as i8 - direction.1) as usize,

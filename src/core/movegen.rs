@@ -6,8 +6,8 @@ pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
     let mut legal_moves = Vec::new();
 
     // piece moves
-    for (row, col) in board.squares.iter().enumerate() {
-        for (col, piece) in col.iter().enumerate() {
+    for (row, &col) in board.squares.iter().enumerate() {
+        for (col, &piece) in col.iter().enumerate() {
             if piece.is_some_and(|p| p.color() != board.active_color) || piece.is_none() {
                 continue;
             }
@@ -35,7 +35,7 @@ fn legal_piece_moves(piece: &Piece, src_square: SquareCoords, board: &Board) -> 
         return pawn_legal_moves(src_square, board);
     }
 
-    for direction in piece.directions().iter() {
+    for direction in &piece.directions() {
         let mut dst_square = SquareCoords(
             (src_square.0 as i8 + direction.0) as usize,
             (src_square.1 as i8 + direction.1) as usize,
@@ -98,7 +98,7 @@ fn pawn_legal_moves(src_square: SquareCoords, board: &Board) -> Vec<Move> {
 
     // we have 3 different kind of moves: forward, two square and capture.
     // depending on the color of the pawn the direction is positive or negative.
-    for direction in piece.directions().iter() {
+    for direction in &piece.directions() {
         let dst_square = SquareCoords(
             (src_square.0 as i8 + direction.0) as usize,
             (src_square.1 as i8 + direction.1) as usize,

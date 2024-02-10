@@ -213,7 +213,7 @@ impl Board {
         let mut bishops = Vec::new();
 
         let mut row_offset = 0;
-        for (i, piece) in self.squares.iter().flatten().enumerate() {
+        for (i, &piece) in self.squares.iter().flatten().enumerate() {
             // the color for the first square in the row alternates for each row,
             // so we need to set an offset every time we reach the end of a row.
             if i % 8 == 0 && i != 0 {
@@ -493,8 +493,8 @@ impl Board {
 
         // starting from the square we are checking, iterate through all the directions
         // of each piece and check if there are any pieces attacking the square.
-        for piece in pieces.iter() {
-            for direction in piece.directions() {
+        for piece in &pieces {
+            for direction in &piece.directions() {
                 // pawns can only attack diagonally
                 if piece == &Piece::Pawn(color) && direction.1 == 0 {
                     continue;
@@ -595,7 +595,7 @@ impl Board {
                 }
             };
 
-            for direction in PAWN_CAPTURE_DIRECTIONS {
+            for direction in &PAWN_CAPTURE_DIRECTIONS {
                 let src_square = en_passant_target + direction;
 
                 if !(0..=7).contains(&src_square.0) || !(0..=7).contains(&src_square.1) {
@@ -613,9 +613,9 @@ impl Board {
 
     /// Returns the square of the current active color king.
     fn king_square(&self) -> SquareCoords {
-        for (row, col) in self.squares.iter().enumerate() {
-            for (col, piece) in col.iter().enumerate() {
-                if piece == &Some(Piece::King(self.active_color)) {
+        for (row, &col) in self.squares.iter().enumerate() {
+            for (col, &piece) in col.iter().enumerate() {
+                if piece == Some(Piece::King(self.active_color)) {
                     return SquareCoords(row, col);
                 }
             }
@@ -696,9 +696,9 @@ impl std::fmt::Display for Board {
 
         writeln!(f, "{}", fisrt_line)?;
 
-        for (i, row) in self.squares.iter().enumerate() {
+        for (i, &row) in self.squares.iter().enumerate() {
             write!(f, "│")?;
-            for (j, piece) in row.iter().enumerate() {
+            for (j, &piece) in row.iter().enumerate() {
                 if j == 7 {
                     match piece {
                         Some(piece) => write!(f, " {} │ {}", piece, rows[i]),
@@ -719,7 +719,7 @@ impl std::fmt::Display for Board {
             }
         }
 
-        for col in cols.iter() {
+        for col in &cols {
             write!(f, "  {} ", col)?;
         }
 

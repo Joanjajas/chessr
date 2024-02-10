@@ -1,5 +1,6 @@
 use std::fs::read_to_string;
 use std::io::{stdin, stdout, Write};
+use std::time::Instant;
 
 use anyhow::Result;
 use chessr::Board;
@@ -63,7 +64,9 @@ fn play(startpos: &str) -> Result<()> {
         print!("Play Move ({}): {}", board.active_color, r#move);
         stdout().flush()?;
         stdin().read_line(&mut r#move)?;
+        let start = Instant::now();
         let made_move = board.make_move(r#move.trim());
+        println!("Time: {:?}", start.elapsed());
         if made_move.is_none() {
             continue;
         }

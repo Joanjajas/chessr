@@ -55,6 +55,14 @@ impl std::ops::Add<(i8, i8)> for SquareCoords {
     }
 }
 
+impl std::ops::Add<&(i8, i8)> for SquareCoords {
+    type Output = SquareCoords;
+
+    fn add(self, (row, col): &(i8, i8)) -> Self::Output {
+        SquareCoords((self.0 as i8 + row) as usize, (self.1 as i8 + col) as usize)
+    }
+}
+
 impl std::ops::AddAssign<&(i8, i8)> for SquareCoords {
     fn add_assign(&mut self, (row, col): &(i8, i8)) {
         *self = *self + (*row, *col);
