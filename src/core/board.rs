@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::constants::FEN_STARTING_POSITION;
+use crate::constants::{FEN_STARTING_POSITION, PAWN_CAPTURE_DIRECTIONS};
 use crate::core::{movegen, CastleKind, CastleRights, Color, Move, Piece, SquareCoords};
 use crate::fen::{self, FenParseError};
 
@@ -300,7 +300,7 @@ impl Board {
     /// );
     /// ```
     pub fn make_uci_move(&mut self, uci_str: &str) -> Option<Move> {
-        let r#move = Move::from_uci(uci_str, self.active_color);
+        let r#move = Move::from_uci(uci_str, self);
 
         if let Some(ref r#move) = r#move {
             if self.legal_moves().contains(r#move) {
@@ -367,7 +367,7 @@ impl Board {
     /// ```
     pub fn make_move(&mut self, move_str: &str) -> Option<Move> {
         // try to parse the move as UCI.
-        if let Some(r#move) = Move::from_uci(move_str, self.active_color) {
+        if let Some(r#move) = Move::from_uci(move_str, self) {
             if self.legal_moves().contains(&r#move) {
                 self.apply_move(&r#move);
                 return Some(r#move);
@@ -425,11 +425,10 @@ impl Board {
             }
         }
 
-        // handle normal move
+        // handle normal move and en passant
         if let (Some(src_square), Some(dst_square)) = (r#move.src_square, r#move.dst_square) {
             // handle en pasant capture
-            let en_passant_capture = self.en_passant_target.is_some_and(|s| s == dst_square);
-            if en_passant_capture {
+            if self.en_passant_target.is_some_and(|s| s == dst_square) {
                 let en_passant_square = self.en_passant_target.unwrap();
 
                 // calculate the square in which the en passant target is located
@@ -441,69 +440,27 @@ impl Board {
                 self.set_piece(en_passant_capture_square, None);
             }
 
-            let src_square_piece = self.get_piece(src_square);
-            let dst_square_piece = self.get_piece(dst_square);
-
             // reset halfmove clock if a pawn is moved or a piece is captured
-            if src_square_piece == Some(Piece::Pawn(self.active_color))
-                || dst_square_piece.is_some()
-                || en_passant_capture
-            {
+            if r#move.piece == Some(Piece::Pawn(self.active_color)) || r#move.capture {
                 self.halfmove_clock = 0;
             } else {
                 self.halfmove_clock += 1;
             }
 
+            // handle promotion
             if let Some(promotion_piece) = r#move.promotion {
                 self.set_piece(dst_square, Some(promotion_piece));
             } else {
-                self.set_piece(dst_square, src_square_piece);
+                self.set_piece(dst_square, r#move.piece);
             }
 
             self.set_piece(src_square, None);
-
-            // update en passant target square
-            if src_square_piece == Some(Piece::Pawn(self.active_color))
-                && (dst_square.0 as i8 - src_square.0 as i8).abs() == 2
-            {
-                let adjacent_squares = (
-                    SquareCoords(dst_square.0, (dst_square.1 as i8 + 1) as usize),
-                    SquareCoords(dst_square.0, (dst_square.1 as i8 - 1) as usize),
-                );
-
-                if (0..=7).contains(&adjacent_squares.0 .0)
-                    && (0..=7).contains(&adjacent_squares.0 .1)
-                    && (0..=7).contains(&adjacent_squares.1 .0)
-                    && (0..=7).contains(&adjacent_squares.1 .1)
-                {
-                    let adjacent_squares_pieces = (
-                        self.get_piece(adjacent_squares.0),
-                        self.get_piece(adjacent_squares.1),
-                    );
-
-                    if adjacent_squares_pieces
-                        .0
-                        .is_some_and(|p| p == Piece::Pawn(self.active_color.invert()))
-                        || adjacent_squares_pieces
-                            .1
-                            .is_some_and(|p| p == Piece::Pawn(self.active_color.invert()))
-                    {
-                        self.en_passant_target = {
-                            match self.active_color {
-                                Color::Black => Some((dst_square.0 - 1, dst_square.1).into()),
-                                Color::White => Some((dst_square.0 + 1, dst_square.1).into()),
-                            }
-                        }
-                    }
-                }
-            } else {
-                self.en_passant_target = None;
-            }
         }
 
         self.update_castle_rights(r#move);
         self.position_history.push(self.fen());
         self.active_color = self.active_color.invert();
+        self.en_passant_target = self.update_en_passant_target_square(r#move);
         self.fullmove_number += match self.active_color {
             Color::White => 1,
             Color::Black => 0,
@@ -621,6 +578,39 @@ impl Board {
         self.set_piece(new_rook_square, Some(Piece::Rook(self.active_color)));
     }
 
+    /// Checks if en passant is possible in next turn given a move.
+    fn update_en_passant_target_square(&self, r#move: &Move) -> Option<SquareCoords> {
+        if let (Some(src_square), Some(dst_square)) = (r#move.src_square, r#move.dst_square) {
+            // if the move is not a double pawn move, return false
+            if r#move.piece != Some(Piece::Pawn(self.active_color))
+                || (dst_square.0 as i8 - src_square.0 as i8).abs() != 2
+            {
+                return None;
+            }
+
+            let en_passant_target: SquareCoords = {
+                match self.active_color {
+                    Color::Black => (dst_square.0 - 1, dst_square.1).into(),
+                    Color::White => (dst_square.0 + 1, dst_square.1).into(),
+                }
+            };
+
+            for direction in PAWN_CAPTURE_DIRECTIONS {
+                let src_square = en_passant_target + direction;
+
+                if !(0..=7).contains(&src_square.0) || !(0..=7).contains(&src_square.1) {
+                    continue;
+                }
+
+                if self.get_piece(src_square) == Some(Piece::Pawn(self.active_color.invert())) {
+                    return Some(en_passant_target);
+                }
+            }
+        }
+
+        None
+    }
+
     /// Returns the square of the current active color king.
     fn king_square(&self) -> SquareCoords {
         for (row, col) in self.squares.iter().enumerate() {
@@ -649,14 +639,14 @@ impl Board {
         }
 
         // white king moves
-        if r#move.src_square.is_some_and(|s| s == (7, 4)) {
+        if r#move.piece.is_some_and(|p| p == Piece::King(Color::White)) {
             self.castle_rights.retain(|x| {
                 x != &CastleRights::WhiteKingside && x != &CastleRights::WhiteQueenside
             });
         }
 
         // black king moves
-        if r#move.src_square.is_some_and(|s| s == (0, 4)) {
+        if r#move.piece.is_some_and(|p| p == Piece::King(Color::Black)) {
             self.castle_rights.retain(|x| {
                 x != &CastleRights::BlackKingside && x != &CastleRights::BlackQueenside
             });

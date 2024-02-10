@@ -50,11 +50,13 @@ fn legal_piece_moves(piece: &Piece, src_square: SquareCoords, board: &Board) -> 
             }
 
             let r#move = Move {
+                piece: Some(*piece),
                 color: board.active_color,
                 src_square: Some(src_square),
                 dst_square: Some(dst_square),
                 promotion: None,
                 castle: None,
+                capture: dst_square_piece.is_some(),
             };
 
             // if the piece is the opposite color, we can move there and take it, but not
@@ -140,6 +142,8 @@ fn pawn_legal_moves(src_square: SquareCoords, board: &Board) -> Vec<Move> {
             continue;
         }
 
+        let capture = dst_square_piece.is_some() || board.en_passant_target == Some(dst_square);
+
         // if the move is a promotion, we have 4 different possible promotions
         if (dst_square.0 == 0 && board.active_color == Color::White)
             || (dst_square.0 == 7 && board.active_color == Color::Black)
@@ -151,11 +155,13 @@ fn pawn_legal_moves(src_square: SquareCoords, board: &Board) -> Vec<Move> {
                 Piece::Knight(board.active_color),
             ] {
                 let r#move = Move {
+                    piece: Some(piece),
                     color: board.active_color,
                     src_square: Some(src_square),
                     dst_square: Some(dst_square),
                     promotion: Some(*promotion),
                     castle: None,
+                    capture,
                 };
 
                 // don't move the pawn if it is pinned
@@ -170,11 +176,13 @@ fn pawn_legal_moves(src_square: SquareCoords, board: &Board) -> Vec<Move> {
         }
 
         let r#move = Move {
+            piece: Some(piece),
             color: board.active_color,
             src_square: Some(src_square),
             dst_square: Some(dst_square),
             promotion: None,
             castle: None,
+            capture,
         };
 
         // don't move the pawn if it is pinned
@@ -238,11 +246,13 @@ pub fn legal_castle_moves(board: &Board) -> Vec<Move> {
     legal_moves
         .iter()
         .map(|castle| Move {
+            piece: None,
             color: board.active_color,
             src_square: None,
             dst_square: None,
             promotion: None,
             castle: Some(*castle),
+            capture: false,
         })
         .collect()
 }
@@ -294,11 +304,13 @@ mod test {
         assert_eq!(
             pawn_legal_moves((4, 4).into(), &board)[0],
             Move {
+                piece: Some(Piece::Pawn(Color::White)),
                 color: Color::White,
                 src_square: Some((4, 4).into()),
                 dst_square: Some((3, 4).into()),
                 promotion: None,
                 castle: None,
+                capture: false,
             }
         );
 
@@ -324,11 +336,13 @@ mod test {
         assert_eq!(
             pawn_legal_moves((4, 0).into(), &board)[0],
             Move {
+                piece: Some(Piece::Pawn(Color::White)),
                 color: Color::White,
                 src_square: Some((4, 0).into()),
                 dst_square: Some((3, 0).into()),
                 promotion: None,
                 castle: None,
+                capture: false,
             }
         );
 

@@ -6,7 +6,10 @@ use regex::Regex;
 /// Represents a chess move.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Move {
-    /// Color of the piece moving
+    /// Piece to move. If move is a castle, this will be None.
+    pub piece: Option<Piece>,
+
+    /// Color of the player making the move
     pub color: Color,
 
     /// Source square of the piece moving
@@ -20,6 +23,9 @@ pub struct Move {
 
     /// Piece to promote.
     pub promotion: Option<Piece>,
+
+    /// Capture flag
+    pub capture: bool,
 }
 
 impl Move {
@@ -46,7 +52,7 @@ impl Move {
     ///
     /// Either an UCI move with or without '-' will be accepted
     /// (e.g. "e2e4" or "e2-e4").
-    pub fn from_uci(uci_str: &str, color: Color) -> Option<Move> {
+    pub fn from_uci(uci_str: &str, board: &Board) -> Option<Move> {
         let re = Regex::new(UCI_MOVE_REGEX).expect("Invalid UCI move regex");
         let re_dash = Regex::new(UCI_MOVE_DASH_REGEX).expect("Invalid UCI move dash regex");
 
@@ -64,24 +70,28 @@ impl Move {
         let dst_square = SquareCoords::from_san_str(dst_square_str)?;
         let castle = CastleKind::from_uci_str(uci_str);
         let promotion = match promotion_char {
-            Some(char) => Some(Piece::from_uci_char(char, color)?),
+            Some(char) => Some(Piece::from_uci_char(char, board.active_color)?),
             None => None,
         };
 
         match castle {
             Some(castle_type) => Some(Move {
-                color,
+                piece: None,
+                color: board.active_color,
                 src_square: None,
                 dst_square: None,
                 castle: Some(castle_type),
                 promotion: None,
+                capture: false,
             }),
             None => Some(Move {
-                color,
+                piece: board.get_piece(src_square),
+                color: board.active_color,
                 src_square: Some(src_square),
                 dst_square: Some(dst_square),
                 castle: None,
                 promotion,
+                capture: board.get_piece(dst_square).is_some(),
             }),
         }
     }
@@ -96,11 +106,13 @@ impl Move {
         if re.is_match(r#move) {
             let castle_type = CastleKind::from_san_str(r#move)?;
             return Some(Move {
+                piece: None,
                 color: board.active_color,
                 src_square: None,
                 dst_square: None,
                 castle: Some(castle_type),
                 promotion: None,
+                capture: false,
             });
         };
 
@@ -370,11 +382,13 @@ fn algebraic_piece_move(
             }
 
             let r#move = Move {
+                piece: Some(piece),
                 color: board.active_color,
                 src_square: Some(src_square),
                 dst_square: Some(dst_square),
                 promotion: None,
                 castle: None,
+                capture: board.get_piece(dst_square).is_some(),
             };
 
             // we need this in order to prevent false disambiguation when one of two pieces
@@ -393,10 +407,7 @@ fn algebraic_piece_move(
             let r#move = valid_moves.first()?;
             Some(*r#move)
         }
-        _ => {
-            println!("Ambiguous move notation");
-            None
-        }
+        _ => None,
     }
 }
 
@@ -435,12 +446,17 @@ fn algebraic_pawn_move(
             }
         }
 
+        let capture =
+            board.get_piece(dst_square).is_some() || board.en_passant_target == Some(dst_square);
+
         return Some(Move {
+            piece: Some(piece),
             color: board.active_color,
             src_square: Some(src_square),
             dst_square: Some(dst_square),
             promotion: None,
             castle: None,
+            capture,
         });
     }
 
@@ -454,41 +470,54 @@ mod test {
     #[test]
     fn test_move_from_uci_notation() {
         // normal pawn move
-        let r#move = Move::from_uci("e2e4", Color::White);
+        let board = Board::new();
+        let r#move = Move::from_uci("e2e4", &board);
         assert_eq!(
             r#move,
             Some(Move {
+                piece: Some(Piece::Pawn(Color::White)),
                 color: Color::White,
                 src_square: Some(SquareCoords(6, 4)),
                 dst_square: Some(SquareCoords(4, 4)),
                 promotion: None,
                 castle: None,
+                capture: false,
             })
         );
 
         // white kingside castle
-        let r#move = Move::from_uci("e1g1", Color::White);
+        let board =
+            Board::from_fen("r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
+                .unwrap();
+        let r#move = Move::from_uci("e1g1", &board);
         assert_eq!(
             r#move,
             Some(Move {
+                piece: None,
                 color: Color::White,
                 src_square: None,
                 dst_square: None,
                 promotion: None,
                 castle: Some(CastleKind::Kingside),
+                capture: false,
             })
         );
 
         // promotion
-        let r#move = Move::from_uci("e7e8q", Color::Black);
+        let board =
+            Board::from_fen("r1bq2nr/1pp1Pppp/p1np2k1/2b5/2B5/3N4/PPPP1PPP/RNBQK2R w KQ - 0 9")
+                .unwrap();
+        let r#move = Move::from_uci("e7e8q", &board);
         assert_eq!(
             r#move,
             Some(Move {
-                color: Color::Black,
+                piece: Some(Piece::Pawn(Color::White)),
+                color: Color::White,
                 src_square: Some(SquareCoords(1, 4)),
                 dst_square: Some(SquareCoords(0, 4)),
-                promotion: Some(Piece::Queen(Color::Black)),
+                promotion: Some(Piece::Queen(Color::White)),
                 castle: None,
+                capture: false,
             })
         );
     }
