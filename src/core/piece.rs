@@ -103,15 +103,32 @@ impl Piece {
         }
     }
 
-    /// Returns the color of the piece.
-    pub fn color(&self) -> Color {
+    pub fn to_figurine_char(&self) -> char {
         match self {
-            Piece::Pawn(color) => *color,
-            Piece::Knight(color) => *color,
-            Piece::Bishop(color) => *color,
-            Piece::Rook(color) => *color,
-            Piece::Queen(color) => *color,
-            Piece::King(color) => *color,
+            Piece::Pawn(Color::White) => '♟',
+            Piece::Knight(Color::White) => '♞',
+            Piece::Bishop(Color::White) => '♝',
+            Piece::Rook(Color::White) => '♜',
+            Piece::Queen(Color::White) => '♛',
+            Piece::King(Color::White) => '♚',
+            Piece::Pawn(Color::Black) => '♙',
+            Piece::Knight(Color::Black) => '♘',
+            Piece::Bishop(Color::Black) => '♗',
+            Piece::Rook(Color::Black) => '♖',
+            Piece::Queen(Color::Black) => '♕',
+            Piece::King(Color::Black) => '♔',
+        }
+    }
+
+    /// Returns the color of the piece.
+    pub fn color(&self) -> &Color {
+        match self {
+            Piece::Pawn(color) => color,
+            Piece::Knight(color) => color,
+            Piece::Bishop(color) => color,
+            Piece::Rook(color) => color,
+            Piece::Queen(color) => color,
+            Piece::King(color) => color,
         }
     }
 

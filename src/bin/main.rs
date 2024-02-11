@@ -61,7 +61,7 @@ fn play(startpos: &str) -> Result<()> {
         }
 
         let mut r#move = String::new();
-        print!("Play Move ({}): {}", board.active_color, r#move);
+        print!("Play Move ({}): ", board.active_color);
         stdout().flush()?;
         stdin().read_line(&mut r#move)?;
         let start = Instant::now();
@@ -78,7 +78,11 @@ fn play(startpos: &str) -> Result<()> {
         println!();
         println!("FEN: {}", board.fen());
         println!();
-        print!("Last Move ({}): {}", board.active_color.invert(), r#move);
+        println!(
+            "Last Move ({}): {}",
+            board.active_color.invert(),
+            made_move.unwrap().to_san_str()
+        );
     }
 
     Ok(())
@@ -108,7 +112,7 @@ fn random_game() -> Result<()> {
         println!(
             "Play Move ({}): {}",
             board.active_color,
-            r#move.to_uci_str()
+            r#move.to_san_str()
         );
         board.make_move(&r#move.to_uci_str());
 
@@ -122,7 +126,7 @@ fn random_game() -> Result<()> {
         println!(
             "Last Move ({}): {}",
             board.active_color.invert(),
-            r#move.to_uci_str()
+            r#move.to_san_str()
         );
     }
     Ok(())

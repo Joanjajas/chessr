@@ -47,6 +47,38 @@ impl Move {
         format!("{}-{}{}", src_square, dst_square, promotion)
     }
 
+    /// Returns a SAN representation of the move.
+    // TODO: Add support for disambiguation
+    pub fn to_san_str(&self) -> String {
+        if let Some(castle) = self.castle {
+            return castle.to_san_str();
+        }
+
+        let mut san = String::new();
+        let piece = self.piece.unwrap();
+
+        if piece != Piece::Pawn(self.color) {
+            san.push(piece.to_figurine_char());
+        }
+
+        if self.capture {
+            if piece == Piece::Pawn(self.color) {
+                san.push_str(&self.src_square.unwrap().to_string()[0..1]);
+            }
+
+            san.push('x');
+        }
+
+        san.push_str(&self.dst_square.unwrap().to_string());
+
+        if let Some(promotion) = self.promotion {
+            san.push('=');
+            san.push(promotion.to_san_char());
+        }
+
+        san
+    }
+
     /// Returns a [Move] struct representation of the given move in UCI
     /// notation.
     ///
@@ -122,7 +154,7 @@ impl Move {
         if re.is_match(r#move) {
             let dst_square = SquareCoords::from_san_str(r#move)?;
             return algebraic_piece_move(
-                Piece::Pawn(board.active_color),
+                &Piece::Pawn(board.active_color),
                 dst_square,
                 None,
                 None,
@@ -137,7 +169,7 @@ impl Move {
             let piece = Piece::from_san_char(r#move.chars().next()?, board.active_color)?;
             let dst_square = SquareCoords::from_san_str(&r#move[1..])?;
 
-            return algebraic_piece_move(piece, dst_square, None, None, board);
+            return algebraic_piece_move(&piece, dst_square, None, None, board);
         }
 
         // piece move row disambiguation
@@ -150,7 +182,7 @@ impl Move {
             let dst_square = SquareCoords::from_san_str(&r#move[2..])?;
             let disambiguation_row = 7 - (chars.next()? as usize - 49);
 
-            return algebraic_piece_move(piece, dst_square, Some(disambiguation_row), None, board);
+            return algebraic_piece_move(&piece, dst_square, Some(disambiguation_row), None, board);
         }
 
         // piece move column disambiguation
@@ -164,7 +196,7 @@ impl Move {
             let disambiguation_column = chars.next()? as usize - 97;
 
             return algebraic_piece_move(
-                piece,
+                &piece,
                 dst_square,
                 None,
                 Some(disambiguation_column),
@@ -183,7 +215,7 @@ impl Move {
             let src_square = SquareCoords::from_san_str(&r#move[1..3])?;
 
             return algebraic_piece_move(
-                piece,
+                &piece,
                 dst_square,
                 Some(src_square.0),
                 Some(src_square.1),
@@ -199,7 +231,7 @@ impl Move {
             let disambiguation_column = r#move.chars().nth(0)? as usize - 97;
 
             return algebraic_piece_move(
-                Piece::Pawn(board.active_color),
+                &Piece::Pawn(board.active_color),
                 dst_square,
                 None,
                 Some(disambiguation_column),
@@ -215,7 +247,7 @@ impl Move {
             let piece = Piece::from_san_char(chars.next()?, board.active_color)?;
             let dst_square = SquareCoords::from_san_str(&r#move[2..])?;
 
-            return algebraic_piece_move(piece, dst_square, None, None, board);
+            return algebraic_piece_move(&piece, dst_square, None, None, board);
         }
 
         // piece capture row disambiguation
@@ -228,7 +260,7 @@ impl Move {
             let dst_square = SquareCoords::from_san_str(&r#move[3..])?;
             let disambiguation_row = 7 - (chars.next()? as usize - 49);
 
-            return algebraic_piece_move(piece, dst_square, Some(disambiguation_row), None, board);
+            return algebraic_piece_move(&piece, dst_square, Some(disambiguation_row), None, board);
         }
 
         // piece capture column disambiguation
@@ -242,7 +274,7 @@ impl Move {
             let disambiguation_column = chars.next()? as usize - 97;
 
             return algebraic_piece_move(
-                piece,
+                &piece,
                 dst_square,
                 None,
                 Some(disambiguation_column),
@@ -261,7 +293,7 @@ impl Move {
             let src_square = SquareCoords::from_san_str(&r#move[1..3])?;
 
             return algebraic_piece_move(
-                piece,
+                &piece,
                 dst_square,
                 Some(src_square.0),
                 Some(src_square.1),
@@ -277,7 +309,7 @@ impl Move {
             let promotion_piece = Piece::from_san_char(r#move.chars().nth(3)?, board.active_color)?;
 
             let mut r#move = algebraic_piece_move(
-                Piece::Pawn(board.active_color),
+                &Piece::Pawn(board.active_color),
                 dst_square,
                 None,
                 None,
@@ -301,7 +333,7 @@ impl Move {
             let promotion_piece = Piece::from_san_char(r#move.chars().nth(5)?, board.active_color)?;
 
             let mut r#move = algebraic_piece_move(
-                Piece::Pawn(board.active_color),
+                &Piece::Pawn(board.active_color),
                 dst_square,
                 None,
                 Some(disambiguation),
@@ -321,7 +353,7 @@ impl Move {
 
 /// Returns a move from algebraic notation data.
 fn algebraic_piece_move(
-    piece: Piece,
+    piece: &Piece,
     dst_square: SquareCoords,
     disambiguation_row: Option<usize>,
     disambiguation_column: Option<usize>,
@@ -329,7 +361,7 @@ fn algebraic_piece_move(
 ) -> Option<Move> {
     // handle pawn moves separately
     if let Piece::Pawn(_) = piece {
-        return algebraic_pawn_move(dst_square, board, disambiguation_column);
+        return algebraic_pawn_move(piece, dst_square, board, disambiguation_column);
     }
 
     let mut valid_moves = vec![];
@@ -343,7 +375,7 @@ fn algebraic_piece_move(
 
             // if we find a piece it is blocking the way then we can stop looking in this
             // direction
-            if src_square_piece.is_some_and(|p| p != piece) {
+            if src_square_piece.is_some_and(|p| &p != piece) {
                 break;
             }
 
@@ -379,7 +411,7 @@ fn algebraic_piece_move(
             }
 
             let r#move = Move {
-                piece: Some(piece),
+                piece: Some(*piece),
                 color: board.active_color,
                 src_square: Some(src_square),
                 dst_square: Some(dst_square),
@@ -410,12 +442,11 @@ fn algebraic_piece_move(
 
 /// Returns a pawn move from algebraic notation data.
 fn algebraic_pawn_move(
+    piece: &Piece,
     dst_square: SquareCoords,
     board: &Board,
     disambiguation_column: Option<usize>,
 ) -> Option<Move> {
-    let piece = Piece::Pawn(board.active_color);
-
     for direction in &piece.directions() {
         // since we are going from the dst_square to the src_square, we subtract the
         // direction
@@ -431,7 +462,7 @@ fn algebraic_pawn_move(
 
         // if the src_square is empty, or it is not the piece we are moving, skip and
         // continue with the next direction
-        if src_square_piece.is_some_and(|p| p != piece) || src_square_piece.is_none() {
+        if src_square_piece.is_some_and(|p| &p != piece) || src_square_piece.is_none() {
             continue;
         }
 
@@ -446,7 +477,7 @@ fn algebraic_pawn_move(
             board.get_piece(dst_square).is_some() || board.en_passant_target == Some(dst_square);
 
         return Some(Move {
-            piece: Some(piece),
+            piece: Some(*piece),
             color: board.active_color,
             src_square: Some(src_square),
             dst_square: Some(dst_square),

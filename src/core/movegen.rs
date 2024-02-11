@@ -8,7 +8,7 @@ pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
     // piece moves
     for (row, &col) in board.squares.iter().enumerate() {
         for (col, &piece) in col.iter().enumerate() {
-            if piece.is_some_and(|p| p.color() != board.active_color) || piece.is_none() {
+            if piece.is_some_and(|p| p.color() != &board.active_color) || piece.is_none() {
                 continue;
             }
 
@@ -42,7 +42,7 @@ fn legal_piece_moves(piece: &Piece, src_square: SquareCoords, board: &Board) -> 
             let dst_square_piece = board.get_piece(dst_square);
 
             // if the piece is the same color, we can't move there or beyond
-            if dst_square_piece.is_some_and(|p| p.color() == board.active_color) {
+            if dst_square_piece.is_some_and(|p| p.color() == &board.active_color) {
                 break;
             }
 
@@ -58,7 +58,7 @@ fn legal_piece_moves(piece: &Piece, src_square: SquareCoords, board: &Board) -> 
 
             // if the piece is the opposite color, we can move there and take it, but not
             // beyond
-            if dst_square_piece.is_some_and(|p| p.color() != board.active_color) {
+            if dst_square_piece.is_some_and(|p| p.color() != &board.active_color) {
                 if !board.future_check(&r#move) {
                     legal_moves.push(r#move);
                 }
@@ -129,7 +129,7 @@ fn pawn_legal_moves(src_square: SquareCoords, board: &Board) -> Vec<Move> {
             || board.en_passant_target.is_none();
         let invalid_capture = direction.1 != 0
             && (dst_square_piece.is_none() && invalid_en_passant)
-            || dst_square_piece.is_some_and(|p| p.color() == board.active_color);
+            || dst_square_piece.is_some_and(|p| p.color() == &board.active_color);
 
         // if one of the conditions is met, skip and continue with the next direction
         if invalid_forward_move || invalid_two_square_move || invalid_capture {
