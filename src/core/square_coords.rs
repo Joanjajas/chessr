@@ -22,6 +22,11 @@ impl SquareCoords {
 
         Some((row, column).into())
     }
+
+    /// Returns true if the square coordinates form part of the board
+    pub fn inside_board(&self) -> bool {
+        (0..=7).contains(&self.0) && (0..=7).contains(&self.1)
+    }
 }
 
 impl Display for SquareCoords {
@@ -60,6 +65,22 @@ impl std::ops::Add<&(i8, i8)> for SquareCoords {
 
     fn add(self, (row, col): &(i8, i8)) -> Self::Output {
         SquareCoords((self.0 as i8 + row) as usize, (self.1 as i8 + col) as usize)
+    }
+}
+
+impl std::ops::Sub<(i8, i8)> for SquareCoords {
+    type Output = SquareCoords;
+
+    fn sub(self, (row, col): (i8, i8)) -> Self::Output {
+        SquareCoords((self.0 as i8 - row) as usize, (self.1 as i8 - col) as usize)
+    }
+}
+
+impl std::ops::Sub<&(i8, i8)> for SquareCoords {
+    type Output = SquareCoords;
+
+    fn sub(self, (row, col): &(i8, i8)) -> Self::Output {
+        SquareCoords((self.0 as i8 - row) as usize, (self.1 as i8 - col) as usize)
     }
 }
 

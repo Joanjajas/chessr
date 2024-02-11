@@ -36,12 +36,9 @@ fn legal_piece_moves(piece: &Piece, src_square: SquareCoords, board: &Board) -> 
     }
 
     for direction in &piece.directions() {
-        let mut dst_square = SquareCoords(
-            (src_square.0 as i8 + direction.0) as usize,
-            (src_square.1 as i8 + direction.1) as usize,
-        );
+        let mut dst_square = src_square + direction;
 
-        while (0..=7).contains(&dst_square.0) && (0..=7).contains(&dst_square.1) {
+        while dst_square.inside_board() {
             let dst_square_piece = board.get_piece(dst_square);
 
             // if the piece is the same color, we can't move there or beyond
@@ -99,14 +96,11 @@ fn pawn_legal_moves(src_square: SquareCoords, board: &Board) -> Vec<Move> {
     // we have 3 different kind of moves: forward, two square and capture.
     // depending on the color of the pawn the direction is positive or negative.
     for direction in &piece.directions() {
-        let dst_square = SquareCoords(
-            (src_square.0 as i8 + direction.0) as usize,
-            (src_square.1 as i8 + direction.1) as usize,
-        );
+        let dst_square = src_square + direction;
 
-        // if the destination square is out of bounds, skip and continue with the next
+        // if the dst_square is out of bounds, skip and continue with the next
         // direction
-        if !(0..=7).contains(&dst_square.0) || !(0..=7).contains(&dst_square.1) {
+        if !dst_square.inside_board() {
             continue;
         }
 

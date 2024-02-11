@@ -334,14 +334,11 @@ fn algebraic_piece_move(
 
     let mut valid_moves = vec![];
     for direction in &piece.directions() {
-        let mut src_square = SquareCoords(
-            (dst_square.0 as i8 + direction.0) as usize,
-            (dst_square.1 as i8 + direction.1) as usize,
-        );
+        let mut src_square = dst_square + direction;
 
         // starting from the dst_square square, travel all the way in all possible
         // directions until we find the piece matching the one we are moving
-        while (0..=7).contains(&src_square.0) && (0..=7).contains(&src_square.1) {
+        while src_square.inside_board() {
             let src_square_piece = board.get_piece(src_square);
 
             // if we find a piece it is blocking the way then we can stop looking in this
@@ -366,7 +363,7 @@ fn algebraic_piece_move(
                 }
             }
 
-            // if the source square is empty, depending on the piece type we can continue
+            // if the src_square is empty, depending on the piece type we can continue
             // looking in the same direction or skip to the next direction
             if src_square_piece.is_none() {
                 src_square += direction;
@@ -420,20 +417,19 @@ fn algebraic_pawn_move(
     let piece = Piece::Pawn(board.active_color);
 
     for direction in &piece.directions() {
-        let src_square = SquareCoords(
-            (dst_square.0 as i8 - direction.0) as usize,
-            (dst_square.1 as i8 - direction.1) as usize,
-        );
-
-        // if the source square is out of bounds, skip and continue with the next
+        // since we are going from the dst_square to the src_square, we subtract the
         // direction
-        if !(0..=7).contains(&src_square.0) || !(0..=7).contains(&src_square.1) {
+        let src_square = dst_square - direction;
+
+        // if the src_square is out of bounds, skip and continue with the next
+        // direction
+        if !src_square.inside_board() {
             continue;
         }
 
         let src_square_piece = board.get_piece(src_square);
 
-        // if the source square is empty, or it is not the piece we are moving, skip and
+        // if the src_square is empty, or it is not the piece we are moving, skip and
         // continue with the next direction
         if src_square_piece.is_some_and(|p| p != piece) || src_square_piece.is_none() {
             continue;

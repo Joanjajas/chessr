@@ -502,19 +502,15 @@ impl Board {
 
                 let mut src_square = match piece {
                     // since in this method we are going from the square we are checking to the
-                    // source square, we need to invert the direction if the
-                    // piece is a pawn.
+                    // src_square, we need to invert the direction if the piece is a pawn.
                     Piece::Pawn(_) => SquareCoords(
                         (src_square.0 as i8 - direction.0) as usize,
                         (src_square.1 as i8 + direction.1) as usize,
                     ),
-                    _ => SquareCoords(
-                        (src_square.0 as i8 + direction.0) as usize,
-                        (src_square.1 as i8 + direction.1) as usize,
-                    ),
+                    _ => src_square + direction,
                 };
 
-                while (0..=7).contains(&src_square.0) && (0..=7).contains(&src_square.1) {
+                while src_square.inside_board() {
                     let src_square_piece = self.get_piece(src_square);
                     if src_square_piece.is_some_and(|p| &p != piece) {
                         break;
@@ -598,7 +594,7 @@ impl Board {
             for direction in &PAWN_CAPTURE_DIRECTIONS {
                 let src_square = en_passant_target + direction;
 
-                if !(0..=7).contains(&src_square.0) || !(0..=7).contains(&src_square.1) {
+                if !src_square.inside_board() {
                     continue;
                 }
 
