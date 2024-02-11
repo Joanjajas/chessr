@@ -33,7 +33,6 @@ pub struct Board {
     pub position_history: Vec<String>,
 }
 
-// TODO: PGN, replay games.
 impl Board {
     /// Creates a new board with the starting position.
     ///

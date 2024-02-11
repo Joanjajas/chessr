@@ -2,7 +2,7 @@ use crate::core::{Board, CastleKind, CastleRights, Color, Move, Piece, SquareCoo
 
 /// Returns a vec of [Move] containing all possible legal moves in the current
 /// position.
-pub fn generate_legal_moves(board: &Board) -> Vec<Move> {
+pub(crate) fn generate_legal_moves(board: &Board) -> Vec<Move> {
     let mut legal_moves = Vec::new();
 
     // piece moves
@@ -190,7 +190,7 @@ fn pawn_legal_moves(src_square: SquareCoords, board: &Board) -> Vec<Move> {
 
 /// Returns a vec of [Move] containing all possible castle legal moves for the
 /// current position.
-pub fn legal_castle_moves(board: &Board) -> Vec<Move> {
+fn legal_castle_moves(board: &Board) -> Vec<Move> {
     let mut legal_moves = Vec::new();
 
     match board.active_color {

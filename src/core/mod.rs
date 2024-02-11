@@ -2,7 +2,7 @@ pub mod board;
 pub mod castle;
 pub mod color;
 pub mod r#move;
-pub mod movegen;
+mod movegen;
 pub mod piece;
 pub mod square_coords;
 

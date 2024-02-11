@@ -23,9 +23,8 @@ pub const UCI_MOVE_DASH_REGEX: &str = r"^([a-h])([1-8])-([a-h])([1-8])([qrbn]?)$
 
 
 // Pieces move directions
-pub const PAWN_MOVE_DIRECTIONS: [(i8, i8); 2] = [(1, 0), (2, 0)];
-pub const PAWN_CAPTURE_DIRECTIONS: [(i8, i8); 2] = [(1, 1), (1, -1)];
 pub const PAWN_DIRECTIONS: [(i8, i8); 4] = [(1, 0), (2, 0), (1, 1), (1, -1)];
+pub const PAWN_CAPTURE_DIRECTIONS: [(i8, i8); 2] = [(1, 1), (1, -1)];
 pub const ROOK_DIRECTIONS: [(i8, i8); 4] = [(1, 0), (0, 1), (-1, 0), (0, -1)];
 pub const BISHOP_DIRECTIONS: [(i8, i8); 4] = [(1, 1), (-1, 1), (-1, -1), (1, -1)];
 pub const KNIGHT_DIRECTIONS: [(i8, i8); 8] = [ (2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (1, -2), (-1, 2), (-1, -2)];
