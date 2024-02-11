@@ -467,9 +467,8 @@ mod test {
     fn test_move_from_uci_notation() {
         // normal pawn move
         let board = Board::new();
-        let r#move = Move::from_uci("e2e4", &board);
         assert_eq!(
-            r#move,
+            Move::from_uci("e2e4", &board),
             Some(Move {
                 piece: Some(Piece::Pawn(Color::White)),
                 color: Color::White,
@@ -485,9 +484,8 @@ mod test {
         let board =
             Board::from_fen("r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
                 .unwrap();
-        let r#move = Move::from_uci("e1g1", &board);
         assert_eq!(
-            r#move,
+            Move::from_uci("e1g1", &board),
             Some(Move {
                 piece: None,
                 color: Color::White,
@@ -499,13 +497,29 @@ mod test {
             })
         );
 
+        // capture
+        let board =
+            Board::from_fen("r1bqkbnr/1p1ppppp/p1n5/1Bp5/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4")
+                .unwrap();
+        assert_eq!(
+            Move::from_san("Bxc6", &board),
+            Some(Move {
+                piece: Some(Piece::Bishop(Color::White)),
+                color: Color::White,
+                src_square: Some(SquareCoords(3, 1)),
+                dst_square: Some(SquareCoords(2, 2)),
+                promotion: None,
+                castle: None,
+                capture: true,
+            })
+        );
+
         // promotion
         let board =
             Board::from_fen("r1bq2nr/1pp1Pppp/p1np2k1/2b5/2B5/3N4/PPPP1PPP/RNBQK2R w KQ - 0 9")
                 .unwrap();
-        let r#move = Move::from_uci("e7e8q", &board);
         assert_eq!(
-            r#move,
+            Move::from_uci("e7e8q", &board),
             Some(Move {
                 piece: Some(Piece::Pawn(Color::White)),
                 color: Color::White,
