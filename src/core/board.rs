@@ -93,8 +93,8 @@ impl Board {
         fen::board_to_fen(self)
     }
 
-    /// Returns a vector of all the pieces and their respective squares that
-    /// are checking the king in the current position.
+    /// Returns a vector of all the pieces and their respective square
+    /// coordinates that are checking the king in the current position.
     ///
     /// # Examples
     ///
@@ -458,8 +458,8 @@ impl Board {
 
         self.update_castle_rights(r#move);
         self.position_history.push(self.fen());
-        self.active_color = self.active_color.invert();
         self.en_passant_target = self.update_en_passant_target_square(r#move);
+        self.active_color = self.active_color.invert();
         self.fullmove_number += match self.active_color {
             Color::White => 1,
             Color::Black => 0,
@@ -476,7 +476,8 @@ impl Board {
         cloned_board.check()
     }
 
-    /// Returns the pieces an its respectives squares from where a given square is being attacked.
+    /// Returns the pieces an its respectives square coordinates from where a
+    /// given square is being attacked.
     pub(crate) fn square_attackers(&self, src_square: SquareCoords) -> Vec<(Piece, SquareCoords)> {
         let mut attacking_pieces = Vec::new();
         let color = self.active_color.invert();

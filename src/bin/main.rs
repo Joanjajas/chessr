@@ -66,13 +66,13 @@ fn play(startpos: &str) -> Result<()> {
         stdin().read_line(&mut r#move)?;
         let start = Instant::now();
         let made_move = board.make_move(r#move.trim());
-        println!("Time: {:?}", start.elapsed());
         if made_move.is_none() {
             continue;
         }
 
         println!();
         println!("============================================================");
+        println!("Time: {:?}", start.elapsed());
         println!();
         println!("{}", board);
         println!();
@@ -97,13 +97,17 @@ fn random_game() -> Result<()> {
     println!();
     println!("FEN: {}", board.fen());
     println!();
+    let mut total_time = 0;
+    let mut total_moves = 0;
 
     loop {
         if board.checkmate() {
             println!("Checkmate");
+            println!("Average Time per Move: {}μs", total_time / total_moves);
             break;
         } else if board.draw() {
             println!("Draw");
+            println!("Average Time per Move: {}μs", total_time / total_moves);
             break;
         }
 
@@ -114,10 +118,14 @@ fn random_game() -> Result<()> {
             board.active_color,
             r#move.to_san_str()
         );
+        let start = Instant::now();
         board.make_move(&r#move.to_uci_str());
+        total_time += start.elapsed().as_micros();
+        total_moves += 1;
 
         println!();
         println!("============================================================");
+        println!("Time: {:?}", start.elapsed());
         println!();
         println!("{}", board);
         println!();
@@ -136,7 +144,7 @@ fn parse_lichess_moves() -> Result<()> {
     let re = regex::Regex::new(r"(\{[^}]+\}|\([^)]+\)|\[[^)]+\])").unwrap();
     let re2 = regex::Regex::new(r"(\d+)(\.{3})").unwrap();
     let re3 = regex::Regex::new(r"[!#?+]").unwrap();
-    let moves = read_to_string("moves.txt")?;
+    let moves = read_to_string("game.pgn")?;
     let moves = re.replace_all(&moves, "");
     let moves = re2.replace_all(&moves, "");
     let moves = re3.replace_all(&moves, "");
@@ -144,6 +152,8 @@ fn parse_lichess_moves() -> Result<()> {
 
     let mut board = Board::new();
     let mut sum = 0;
+    let mut total_time = 0;
+    let mut total_moves = 0;
 
     println!();
     println!("============================================================");
@@ -159,17 +169,28 @@ fn parse_lichess_moves() -> Result<()> {
             return;
         }
         println!("Play Move ({}): {}", board.active_color, w);
-        board.make_move(w);
+        let start = Instant::now();
+        let made_move = board.make_move(w);
 
         println!();
         println!("============================================================");
+        println!("Time: {:?}", start.elapsed());
+        total_time += start.elapsed().as_micros();
         println!();
         println!("{}", board);
         println!();
         println!("FEN: {}", board.fen());
         println!();
-        println!("Last Move ({}): {}", board.active_color.invert(), w);
+        println!(
+            "Last Move ({}): {}",
+            board.active_color.invert(),
+            made_move.unwrap().to_san_str()
+        );
+        total_moves += 1;
         sum += 1;
     });
+
+    println!("Average Time per Move: {}μs", total_time / total_moves);
+
     Ok(())
 }

@@ -48,7 +48,7 @@ impl Move {
     }
 
     /// Returns a SAN representation of the move.
-    // TODO: Add support for disambiguation
+    // TODO: Add support for disambiguation, check and checkmate
     pub fn to_san_str(&self) -> String {
         if let Some(castle) = self.castle {
             return castle.to_san_str();

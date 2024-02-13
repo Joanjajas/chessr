@@ -30,6 +30,7 @@ impl std::fmt::Display for FenParseError {
 
 /// Creates a new board from the given FEN string.
 /// [Forsyth–Edwards Notation](https://www.chess.com/terms/fen-chess) (FEN) is a standard notation for describing a particular board position of a chess game.
+/// TODO: make full validation of the FEN string
 pub fn fen_to_board(fen_string: &str) -> Result<Board, FenParseError> {
     let mut squares = [[None; 8]; 8];
     let fen_blocks: Vec<&str> = fen_string.split_whitespace().collect();
