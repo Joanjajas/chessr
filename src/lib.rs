@@ -1,10 +1,6 @@
-pub mod constants;
-pub mod core;
+pub mod board;
+pub mod color;
+pub mod consts;
 pub mod fen;
-
-pub use core::Board;
-pub use core::Color;
-pub use core::Move;
-pub use core::Piece;
-pub use core::SquareCoords;
-pub use core::{CastleKind, CastleRights};
+pub mod piece;
+pub mod square;

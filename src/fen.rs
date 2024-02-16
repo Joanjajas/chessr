@@ -1,187 +1,197 @@
-use crate::core::{Board, CastleRights, Color, Piece, SquareCoords};
+use crate::board::BitBoard;
+use crate::board::Board;
+use crate::color::Color;
+use crate::consts::*;
+use crate::piece::{Piece, PieceKind};
+use crate::square::Square;
 
-/// Represents errors that can occur when parsing a FEN string.
 #[derive(Debug)]
 pub enum FenParseError {
-    FenString,
-    PiecePositions,
-    ActiveColor,
-    CastleRights,
-    EnPassant,
-    HalfmoveClock,
-    FullmoveNumber,
+    Blocks,
+    Rank,
+    ConsecutiveDigits,
+    RankSquares(usize),
+    PawnRank(usize),
+    MissingKing(Color),
+    ActiveColor(String),
+    EnPassantFile(char),
+    EnPassantRank(char),
+    EnPassantSquare(String),
+    HalfmoveClock(std::num::ParseIntError),
+    FullmoveNumber(std::num::ParseIntError),
+}
+
+impl std::fmt::Display for FenParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FenParseError::Blocks => writeln!(f, "Invalid number of blocks"),
+            FenParseError::Rank => writeln!(f, "Invalid number of ranks"),
+            FenParseError::ConsecutiveDigits => writeln!(f, "Consecutive digits in FEN string"),
+            FenParseError::RankSquares(rank) => {
+                writeln!(f, "Invalid number of squares in rank: {rank}")
+            }
+            FenParseError::PawnRank(rank) => writeln!(f, "Invalid pawn placement in rank {rank}"),
+            FenParseError::MissingKing(color) => writeln!(f, "{color} king missing"),
+            FenParseError::ActiveColor(color) => writeln!(f, "Invalid active color: {color}"),
+            FenParseError::EnPassantFile(file) => writeln!(f, "Invalid en passant file: {file}"),
+            FenParseError::EnPassantRank(rank) => writeln!(f, "Invalid en passant rank: {rank}"),
+            FenParseError::EnPassantSquare(square) => {
+                writeln!(f, "Invalid en passant square: {square}")
+            }
+            FenParseError::HalfmoveClock(err) => {
+                writeln!(f, "Invalid halfmove clock value: {err}")
+            }
+            FenParseError::FullmoveNumber(err) => {
+                writeln!(f, "Invalid fullmove number value: {err}")
+            }
+        }
+    }
 }
 
 impl std::error::Error for FenParseError {}
 
-impl std::fmt::Display for FenParseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            FenParseError::FenString => write!(f, "Invalid FEN string"),
-            FenParseError::PiecePositions => write!(f, "Invalid piece positions"),
-            FenParseError::ActiveColor => write!(f, "Invalid active color"),
-            FenParseError::CastleRights => write!(f, "Invalid castle rights"),
-            FenParseError::EnPassant => write!(f, "Invalid en passant"),
-            FenParseError::HalfmoveClock => write!(f, "Invalid halfmove clock"),
-            FenParseError::FullmoveNumber => write!(f, "Invalid fullmove number"),
-        }
-    }
-}
+pub fn parse_fen(fen_str: &str) -> Result<Board, FenParseError> {
+    let blocks: Vec<&str> = fen_str.split_whitespace().collect();
 
-/// Creates a new board from the given FEN string.
-/// [Forsyth–Edwards Notation](https://www.chess.com/terms/fen-chess) (FEN) is a standard notation for describing a particular board position of a chess game.
-/// TODO: make full validation of the FEN string
-pub fn fen_to_board(fen_string: &str) -> Result<Board, FenParseError> {
-    let mut squares = [[None; 8]; 8];
-    let fen_blocks: Vec<&str> = fen_string.split_whitespace().collect();
-
-    // the FEN string should have at least 4 blocks and not more than 6
-    if fen_blocks.len() < 4 || fen_blocks.len() > 6 {
-        return Err(FenParseError::FenString);
+    // FEN string must have at least 4 blocks plus 2 optional blocks
+    if blocks.len() < 4 || blocks.len() > 6 {
+        return Err(FenParseError::Blocks);
     }
 
-    let piece_placement = fen_blocks
-        .first()
-        .ok_or(FenParseError::FenString)?
-        .split('/');
+    let rows: Vec<&str> = blocks[0].split('/').collect();
 
-    // set the pieces for each row
-    for (i, row) in piece_placement.enumerate() {
+    // FEN string must have 8 rows
+    if rows.len() != 8 {
+        return Err(FenParseError::Rank);
+    }
+
+    let mut pieces_order = [None; 64];
+    let mut both_players_pieces = [BitBoard(0); PIECE_TYPE_COUNT];
+    let mut players_pieces = [BitBoard(0); PLAYERS_COUNT];
+
+    // set pieces
+    for (i, row) in rows.iter().enumerate() {
         let mut col = 0;
-        let mut row_count = 0;
+        let mut last_was_digit = false;
+        let mut row_sum = 0;
 
         for c in row.chars() {
-            if row_count > 7 {
-                return Err(FenParseError::PiecePositions);
-            }
-
             if c.is_ascii_digit() {
-                let digit = c.to_digit(10).ok_or(FenParseError::PiecePositions)? as usize;
-                col += digit;
-                row_count += digit;
-            }
+                if last_was_digit {
+                    return Err(FenParseError::ConsecutiveDigits);
+                }
 
-            if c.is_ascii_alphabetic() {
-                let piece = Piece::from_fen_char(c).ok_or(FenParseError::PiecePositions)?;
-                squares[i][col] = Some(piece);
+                col += c.to_digit(10).unwrap() as usize;
+                row_sum += c.to_digit(10).unwrap() as usize;
+                last_was_digit = true;
+            } else {
+                let square = i * 8 + col;
+                let piece = Piece::from_fen_char(c);
+
+                // assign piece to the board
+                pieces_order[square] = Some(piece);
+                both_players_pieces[piece.kind() as usize] |= Square(square as u8).to_bb();
+                players_pieces[piece.color() as usize] |= Square(square as u8).to_bb();
+
                 col += 1;
-                row_count += 1;
+                last_was_digit = false;
+                row_sum += 1;
             }
         }
 
-        if row_count != 8 {
-            return Err(FenParseError::PiecePositions);
+        // each row should have exactly 8 squares
+        if row_sum != 8 {
+            return Err(FenParseError::RankSquares(row_sum));
         }
     }
 
-    let active_color = match *fen_blocks.get(1).ok_or(FenParseError::FenString)? {
+    // the board should'n have a pawn on the first rank
+    if RANK_1 & both_players_pieces[PieceKind::Pawn as usize].0 != 0 {
+        return Err(FenParseError::PawnRank(1));
+    }
+
+    // the board should'n have a pawn on the last rank
+    if RANK_8 & both_players_pieces[PieceKind::Pawn as usize].0 != 0 {
+        return Err(FenParseError::PawnRank(8));
+    }
+
+    // white king is missing
+    if both_players_pieces[PieceKind::King as usize].0 & players_pieces[Color::White as usize].0
+        == 0
+    {
+        return Err(FenParseError::MissingKing(Color::White));
+    }
+
+    // black king is missing
+    if both_players_pieces[PieceKind::King as usize].0 & players_pieces[Color::Black as usize].0
+        == 0
+    {
+        return Err(FenParseError::MissingKing(Color::Black));
+    }
+
+    let active_color = match blocks[1] {
         "w" => Color::White,
         "b" => Color::Black,
-        _ => return Err(FenParseError::ActiveColor),
+        color => return Err(FenParseError::ActiveColor(color.to_string())),
     };
 
-    let mut castle_rights = Vec::new();
-    for c in fen_blocks.get(2).ok_or(FenParseError::FenString)?.chars() {
-        match c {
-            '-' => continue,
-            _ => castle_rights
-                .push(CastleRights::from_fen_char(c).ok_or(FenParseError::CastleRights)?),
-        }
-    }
-
-    let en_passant = match *fen_blocks.get(3).ok_or(FenParseError::FenString)? {
+    let en_passant_target = match blocks[3] {
         "-" => None,
-        s => Some(SquareCoords::from_san_str(s).ok_or(FenParseError::EnPassant)?),
+        square => {
+            let mut ep_square = Square(0);
+            for (i, char) in square.chars().enumerate() {
+                if i == 0 {
+                    match char {
+                        'a' => ep_square = Square(0),
+                        'b' => ep_square = Square(1),
+                        'c' => ep_square = Square(2),
+                        'd' => ep_square = Square(3),
+                        'e' => ep_square = Square(4),
+                        'f' => ep_square = Square(5),
+                        'g' => ep_square = Square(6),
+                        'h' => ep_square = Square(7),
+                        _ => return Err(FenParseError::EnPassantFile(char)),
+                    }
+                }
+
+                if i == 1 {
+                    match char {
+                        '3' if active_color == Color::Black => ep_square += Square(16),
+                        '6' if active_color == Color::White => ep_square += Square(40),
+                        _ => return Err(FenParseError::EnPassantRank(char)),
+                    }
+                }
+
+                if i > 1 {
+                    return Err(FenParseError::EnPassantSquare(square.to_string()));
+                }
+            }
+
+            if ep_square.0 == 0 {
+                None
+            } else {
+                Some(ep_square)
+            }
+        }
     };
 
-    // optional fields
-    let halfmove_clock = match fen_blocks.get(4) {
-        Some(s) => s.parse::<u32>().map_err(|_| FenParseError::HalfmoveClock)?,
-        None => 0,
+    let halfmove_clock = match blocks.get(4).unwrap_or(&"0").parse() {
+        Ok(value) => value,
+        Err(err) => return Err(FenParseError::HalfmoveClock(err)),
     };
 
-    let fullmove_number = match fen_blocks.get(5) {
-        Some(s) => s
-            .parse::<u32>()
-            .map_err(|_| FenParseError::FullmoveNumber)?,
-        None => 1,
+    let fullmove_number = match blocks.get(5).unwrap_or(&"1").parse() {
+        Ok(value) => value,
+        Err(err) => return Err(FenParseError::FullmoveNumber(err)),
     };
 
     Ok(Board {
-        squares,
+        pieces_order,
+        players_pieces,
+        both_players_pieces,
         active_color,
-        castle_rights,
-        en_passant_target: en_passant,
+        en_passant_target,
         halfmove_clock,
         fullmove_number,
-        position_history: vec![fen_string.into()],
     })
-}
-
-/// Converts a given board to a FEN string.
-/// [Forsyth–Edwards Notation](https://www.chess.com/terms/fen-chess) (FEN) is a standard notation for describing a particular board position of a chess game.
-pub fn board_to_fen(board: &Board) -> String {
-    let mut fen = String::new();
-
-    // piece placement
-    for row in &board.squares {
-        let mut empty_squares = 0;
-
-        for &piece in row {
-            match piece {
-                Some(p) => {
-                    if empty_squares > 0 {
-                        fen.push_str(&empty_squares.to_string());
-                        empty_squares = 0;
-                    }
-
-                    fen.push_str(&p.to_fen_char().to_string());
-                }
-                None => empty_squares += 1,
-            }
-        }
-
-        if empty_squares > 0 {
-            fen.push_str(&empty_squares.to_string());
-        }
-
-        fen.push('/');
-    }
-
-    fen.pop(); // remove the last slash
-    fen.push(' ');
-
-    // active color
-    fen.push_str(&board.active_color.to_fen_char().to_string());
-    fen.push(' ');
-
-    // castle rights
-    if board.castle_rights.is_empty() {
-        fen.push('-');
-    } else {
-        for right in &board.castle_rights {
-            fen.push_str(&right.to_fen_char().to_string());
-        }
-    }
-
-    fen.push(' ');
-
-    // en passant
-    match board.en_passant_target {
-        Some(square) => {
-            fen.push_str(&square.to_string());
-        }
-        None => fen.push('-'),
-    }
-
-    fen.push(' ');
-
-    // halfmove clock
-    fen.push_str(&board.halfmove_clock.to_string());
-    fen.push(' ');
-
-    // fullmove number
-    fen.push_str(&board.fullmove_number.to_string());
-
-    fen
 }
