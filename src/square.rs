@@ -1,5 +1,6 @@
 use crate::board::BitBoard;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Square(pub u8);
 
 impl Square {

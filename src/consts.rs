@@ -22,3 +22,13 @@ pub const FILE_E: u64 = 0x08_08_08_08_08_08_08_08;
 pub const FILE_F: u64 = 0x04_04_04_04_04_04_04_04;
 pub const FILE_G: u64 = 0x02_02_02_02_02_02_02_02;
 pub const FILE_H: u64 = 0x01_01_01_01_01_01_01_01;
+
+// Masks for castling rights
+pub const WHITE_KINGSIDE_CASTLE: u8 = 0b0001;
+pub const WHITE_QUEENSIDE_CASTLE: u8 = 0b0010;
+pub const BLACK_KINGSIDE_CASTLE: u8 = 0b0100;
+pub const BLACK_QUEENSIDE_CASTLE: u8 = 0b1000;
+pub const ALL_CASTLE_RIGHTS_WHITE: u8 = 0b0011;
+pub const ALL_CASTLE_RIGHTS_BLACK: u8 = 0b1100;
+pub const ALL_CASTLE_RIGHTS: u8 = 0b1111;
+pub const NO_CASTLE_RIGHTS: u8 = 0b0000;

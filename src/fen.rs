@@ -1,5 +1,6 @@
 use crate::board::BitBoard;
 use crate::board::Board;
+use crate::castle::CastleRights;
 use crate::color::Color;
 use crate::consts::*;
 use crate::piece::{Piece, PieceKind};
@@ -14,6 +15,7 @@ pub enum FenParseError {
     PawnRank(usize),
     MissingKing(Color),
     ActiveColor(String),
+    CastleRight(char),
     EnPassantFile(char),
     EnPassantRank(char),
     EnPassantSquare(String),
@@ -33,6 +35,7 @@ impl std::fmt::Display for FenParseError {
             FenParseError::PawnRank(rank) => writeln!(f, "Invalid pawn placement in rank {rank}"),
             FenParseError::MissingKing(color) => writeln!(f, "{color} king missing"),
             FenParseError::ActiveColor(color) => writeln!(f, "Invalid active color: {color}"),
+            FenParseError::CastleRight(right) => writeln!(f, "Invalid castle right char: {right}"),
             FenParseError::EnPassantFile(file) => writeln!(f, "Invalid en passant file: {file}"),
             FenParseError::EnPassantRank(rank) => writeln!(f, "Invalid en passant rank: {rank}"),
             FenParseError::EnPassantSquare(square) => {
@@ -69,7 +72,7 @@ pub fn parse_fen(fen_str: &str) -> Result<Board, FenParseError> {
     let mut both_players_pieces = [BitBoard(0); PIECE_TYPE_COUNT];
     let mut players_pieces = [BitBoard(0); PLAYERS_COUNT];
 
-    // set pieces
+    // set pieces on the board
     for (i, row) in rows.iter().enumerate() {
         let mut col = 0;
         let mut last_was_digit = false;
@@ -135,6 +138,22 @@ pub fn parse_fen(fen_str: &str) -> Result<Board, FenParseError> {
         color => return Err(FenParseError::ActiveColor(color.to_string())),
     };
 
+    let mut castle_rights = CastleRights(0);
+    match blocks[2] {
+        "-" => (),
+        rights => {
+            for c in rights.chars() {
+                castle_rights.0 |= match c {
+                    'K' => WHITE_KINGSIDE_CASTLE,
+                    'Q' => WHITE_QUEENSIDE_CASTLE,
+                    'k' => BLACK_KINGSIDE_CASTLE,
+                    'q' => BLACK_QUEENSIDE_CASTLE,
+                    _ => return Err(FenParseError::CastleRight(c)),
+                }
+            }
+        }
+    }
+
     let en_passant_target = match blocks[3] {
         "-" => None,
         square => {
@@ -190,6 +209,7 @@ pub fn parse_fen(fen_str: &str) -> Result<Board, FenParseError> {
         players_pieces,
         both_players_pieces,
         active_color,
+        castle_rights,
         en_passant_target,
         halfmove_clock,
         fullmove_number,

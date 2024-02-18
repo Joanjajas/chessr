@@ -1,3 +1,4 @@
+use crate::castle::CastleRights;
 use crate::color::Color;
 use crate::consts::*;
 use crate::fen::{self, FenParseError};
@@ -30,6 +31,7 @@ impl std::fmt::Display for BitBoard {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Board {
     /// Array of pieces on the board.
     pub pieces_order: [Option<Piece>; TOTAL_SQUARES_COUNT],
@@ -42,6 +44,9 @@ pub struct Board {
 
     /// Color of the players who moeves next.
     pub active_color: Color,
+
+    /// Castling rights for both players.
+    pub castle_rights: CastleRights,
 
     /// En passant target square.
     pub en_passant_target: Option<Square>,

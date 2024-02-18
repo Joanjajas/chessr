@@ -14,7 +14,7 @@ pub enum PieceKind {
     King = 5,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Piece {
     WhitePawn = 0b0001,
     WhiteKnight = 0b0010,

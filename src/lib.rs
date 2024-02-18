@@ -1,4 +1,5 @@
 pub mod board;
+pub mod castle;
 pub mod color;
 pub mod consts;
 pub mod fen;
